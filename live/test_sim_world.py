@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Headless harness for the shared-bay society simulation in csms_live.py.
 
-Connects TWO observers to /observe, plays traffic at 30x, and checks:
+Connects TWO observers to /observe, plays traffic at 1440x, and checks:
 
   * join snapshots carry the shared world: 10 residents, 4 shared bays,
     10 parking spots' worth of cars, all starting "away"
   * QUEUE ROTATION: a car is seen WAITING in normal parking while all
     four bays are busy, and later that same car moves into a freed bay
     and charges (server "dequeue" event + world state)
-  * OWNER BILLING: every session summary's idTag matches the car the
-    world last showed charging in that bay, and the wallets broadcast
-    afterwards debits exactly that resident by the billed cost
+  * OWNER BILLING: every session summary's idTag matches the resident
+    the world snapshots showed owning that transaction, and the
+    summaries' own wallet-balance chain debits exactly that resident
+    by each billed cost (checked in arrival order, so simultaneous
+    billings at 1440x cannot race the check)
   * SNAPSHOT REJOIN: a fresh observer connecting mid-session receives a
     world snapshot containing the in-progress session
   * TWO OBSERVERS, ONE WORLD: both observers' latest snapshots agree on
@@ -51,6 +53,8 @@ class Observer:
         self.summaries = []
         self.sim_events = []
         self.wallets = {}
+        self.tx_owner = {}           # transactionId -> idTag (every snapshot)
+        self.bay_car = {}            # bay -> last car seen (every snapshot)
         self.task = None
 
     async def start(self):
@@ -72,6 +76,17 @@ class Observer:
                         self.worlds.pop(0)
                     for r in msg.get("residents", []):
                         self.wallets[r["tag"]] = r["balance"]
+                    # Record session ownership from EVERY snapshot, not
+                    # just the latest one the poll loop happens to sample:
+                    # at 1440x a whole session can start and finish
+                    # between two 0.5 s polls.
+                    for bay in msg.get("bays", []):
+                        if bay.get("car"):
+                            self.bay_car[bay["cpId"]] = bay["car"]
+                        sess = bay.get("session") or {}
+                        if sess.get("transactionId") is not None:
+                            self.tx_owner[sess["transactionId"]] = (
+                                sess.get("idTag"))
                 elif ev == "summary":
                     self.summaries.append(msg)
                 elif ev == "sim_event":
@@ -133,44 +148,48 @@ async def main() -> int:
           and all(x["car"] is None for x in w0["bays"]),
           f"bays={bay_ids}")
 
-    # --- play traffic at 30x ---------------------------------------------
-    await a.send({"control": "SimSpeed", "speed": 30})
+    # --- play traffic at 1440x -------------------------------------------
+    # Traffic follows the sim clock (morning departures, quiet midday,
+    # evening rush), so the queue only reliably forms in the evening
+    # rush. At 1440x a full sim day passes in ~60 s real time, so the
+    # rush — and its queue — comes around quickly whatever the start
+    # time; at 30x this phase was start-time dependent and flaky.
+    await a.send({"control": "SimSpeed", "speed": 1440})
     await a.send({"control": "SimTraffic", "playing": True})
-    print("[SIMTEST] traffic playing at 30x — waiting for the queue "
+    print("[SIMTEST] traffic playing at 1440x — waiting for the queue "
           "to form and rotate…", flush=True)
 
-    bay_car = {}          # bay -> tag most recently seen charging there
     billed_ok = []        # per-summary owner-billing verdicts
-    prev_balances = dict(a.wallets)
+    # Wallet chain: start from the join-snapshot balances and apply each
+    # summary's cost in arrival order. (Sampling the observer's latest
+    # wallets map per summary raced at 1440x, where two billings can
+    # land inside one 0.5 s poll interval.)
+    expected_bal = dict(a.wallets)
     summaries_seen = 0
     first_waiter = None
     waiter_charging_at = None
     rotation_deadline = started + TIMEOUT_S
 
     while time.monotonic() < rotation_deadline:
-        # keep bay->car map current from A's snapshots
-        if a.world:
-            for bay in a.world["bays"]:
-                if bay.get("car"):
-                    bay_car[bay["cpId"]] = bay["car"]
         # owner billing on every new summary
         while summaries_seen < len(a.summaries):
             s = a.summaries[summaries_seen]
             summaries_seen += 1
-            owner = bay_car.get(s["cpId"])
-            bal = a.wallets.get(s["idTag"])
-            wallet_ok = (
-                bal is not None
-                and abs(bal - s["walletBalance"]) < 0.011
-                and (s["idTag"] not in prev_balances
-                     or abs((prev_balances[s["idTag"]] - s["cost"])
-                            - s["walletBalance"]) < 0.011))
-            billed_ok.append(owner == s["idTag"] and wallet_ok)
-            print(f"[SIMTEST] summary: {s['cpId']} billed {s['idTag']} "
+            owner = (a.tx_owner.get(s.get("transactionId"))
+                     or a.bay_car.get(s["cpId"]))
+            tag = s["idTag"]
+            wb = s.get("walletBalance")
+            if tag in expected_bal and isinstance(wb, (int, float)):
+                wallet_ok = abs((expected_bal[tag] - s["cost"]) - wb) < 0.011
+            else:
+                wallet_ok = True   # first sight of this tag's balance
+            if isinstance(wb, (int, float)):
+                expected_bal[tag] = wb
+            billed_ok.append(owner == tag and wallet_ok)
+            print(f"[SIMTEST] summary: {s['cpId']} billed {tag} "
                   f"₹{s['cost']} for {s['kwh']} kWh "
-                  f"(world showed {owner} in that bay; "
+                  f"(world showed {owner} owning that session; "
                   f"wallet now ₹{s['walletBalance']})", flush=True)
-            prev_balances = dict(a.wallets)
         # queue formation: someone waiting while every bay is busy
         if first_waiter is None and a.world:
             cars = {c["tag"]: c for c in a.world["cars"]}
@@ -212,19 +231,42 @@ async def main() -> int:
                 return bay
         return None
 
-    live_bay = await wait_for(lambda: active_session_world(a), 60,
-                              "an active session to rejoin into")
+    # At 1440x sessions churn in seconds of real time, so compare the
+    # rejoining observer's FIRST snapshot against A's world at that same
+    # moment, and retry a few times: the property under test is that the
+    # join snapshot carries the in-progress session, not that one
+    # particular session survives the reconnect gap.
     await b.close()
-    await asyncio.sleep(1.0)
-    b2 = Observer("B2")
-    await b2.start()
-    rejoined = await wait_for(lambda: active_session_world(b2), 30,
-                              "snapshot with in-progress session on rejoin")
+    b2 = None
+    rejoined = None
+    rejoin_ok = False
+    for _attempt in range(3):
+        live_bay = await wait_for(lambda: active_session_world(a), 60,
+                                  "an active session to rejoin into")
+        if b2 is not None:
+            await b2.close()
+            await asyncio.sleep(0.3)
+        b2 = Observer("B2")
+        await b2.start()
+        await wait_for(lambda: b2.worlds, 30,
+                       "first snapshot on rejoin")
+        first = b2.worlds[0]
+        for bay in first["bays"]:
+            if bay["cpId"] == live_bay["cpId"] and bay.get("session"):
+                rejoined = bay
+                rejoin_ok = (
+                    bay.get("car") == live_bay.get("car")
+                    and bay["session"].get("transactionId")
+                    == live_bay["session"].get("transactionId"))
+                break
+        if rejoin_ok:
+            break
+        await asyncio.sleep(1.0)
     check("snapshot rejoin: fresh observer sees the in-progress session",
-          rejoined is not None
-          and rejoined.get("car") == live_bay.get("car"),
-          f"bay={rejoined.get('cpId')} car={rejoined.get('car')} "
-          f"session={rejoined.get('session')}")
+          rejoin_ok,
+          f"bay={rejoined.get('cpId') if rejoined else None} "
+          f"car={rejoined.get('car') if rejoined else None} "
+          f"session={rejoined.get('session') if rejoined else None}")
 
     # --- two observers, one world ------------------------------------------
     await asyncio.sleep(3.0)

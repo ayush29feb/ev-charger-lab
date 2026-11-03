@@ -23,7 +23,14 @@ here speaks **genuine OCPP 1.6J over a real WebSocket**:
   each bay's charge point is a loopback OCPP client of the same CSMS
   (genuine `[2, id, "BootNotification", {...}]` frames, wallet Authorize,
   meter values stamped with the simulation clock), and a traffic engine
-  (Play + 1×/3×/10×/30×) generates arrivals. A car that finds a free bay
+  (Play + 1×/3×/10×/30×/60×/240×/720×/1440× — a full day in ~1 minute at
+  the top speed) generates arrivals that follow the simulation clock:
+  morning departures (~07:00–09:00), a quieter midday, an evening return
+  rush (~17:00–20:00) that fills the bays and forms the queue, and
+  overnight charging at the night rate. The server also keeps per-day
+  tallies (sessions, kWh, revenue, distinct cars served, and a
+  per-resident breakdown) that reset at
+  simulation midnight and are shown on the page. A car that finds a free bay
   plugs in and runs a real session billed to **its owner's** wallet; if
   all bays are busy it parks in **normal parking and queues**, and when a
   session ends the longest-waiting car takes the freed bay, then moves
@@ -37,16 +44,21 @@ here speaks **genuine OCPP 1.6J over a real WebSocket**:
   page shares one world, and a full snapshot on join restores it
   mid-session. The log shows the exact wire strings relayed by the CSMS
   observer feed — nothing is re-enacted.
-- **`test_observer.py` / `test_raw_cp.py` / `test_sim_world.py`** —
+- **`test_observer.py` / `test_raw_cp.py` / `test_sim_world.py` /
+  `test_day_sim.py`** —
   headless checks: a raw Python charge point runs a full session while an
   observer client asserts the frames arrive on the feed. `test_raw_cp.py`
   expects the ToU "Standard" band (₹14/kWh) for its 07:40 UTC timestamps
   and asserts the summary's per-band breakdown; URLs can be overridden
   with `CP_URL` / `OBSERVE_URL`. `test_sim_world.py` plays traffic at
-  30× with two observers and proves the queue forms and rotates, sessions
+  1440× with two observers and proves the queue forms and rotates, sessions
   bill the car owner's wallet, a rejoining observer restores an
   in-progress session from the snapshot, and both observers hold
-  identical world state (`OBSERVE_URL` override).
+  identical world state (`OBSERVE_URL` override). `test_day_sim.py`
+  fast-forwards at 1440× through a sim midnight and proves the day
+  tallies reset and match the billed summaries exactly, per-band ToU
+  math survives the large high-speed meter steps, and the morning /
+  evening traffic patterns appear.
 
 Demo tags (residents): `DEMO1234` ( ₹500), `AYUSH001` (₹250),
 `PRIYA002` (₹300), `RAHUL003` (₹150), `MEERA004` (₹400), `ARJUN005` (₹350),
@@ -82,10 +94,17 @@ GitHub Pages cannot host this version (Pages is static-only; a real server
 must run). From this folder:
 
 ```bash
+fly auth signup                # or: fly auth login (needs flyctl installed)
 fly launch --copy-config       # uses the included fly.toml + Dockerfile
 fly deploy
 fly apps open                  # https://<your-app>.fly.dev/
 ```
+
+You get `https://<your-app>.fly.dev/` for the visualizer page and
+`wss://<your-app>.fly.dev:9001/<chargePointId>` for OCPP chargers
+(browsers use the same 9001 endpoint for the `/observe` feed). Machine
+size is pinned to the smallest Fly offers (shared-cpu-1x, 256 MB) in
+fly.toml — one Python process is all this is.
 
 Notes:
 - Fly app names are globally unique — if `ev-charger-lab` is taken, flyctl

@@ -81,21 +81,29 @@
 
   /* ---------- animated society map (calm diorama) ---------- */
   #scene { position: relative; height: 620px; border: 1px solid #1b2534; border-radius: 10px;
-           background: #0c1220; overflow: hidden; }
+           background: radial-gradient(130% 95% at 50% -10%, #101827 0%, #0b111d 55%, #090e17 100%);
+           overflow: hidden; }
   #building { position: absolute; left: 2%; top: 3%; width: 23%; height: 27%;
-              background: #101a29; border: 1px solid #1b2534; border-radius: 8px; padding: 9px; }
-  #building .solargrid { height: 46%; border-radius: 4px;
+              background: linear-gradient(180deg, #111b2a, #0e1624); border: 1px solid #22314a;
+              border-radius: 8px; padding: 9px;
+              box-shadow: inset 0 1px 0 rgba(190,215,235,.06), 0 6px 14px rgba(0,0,0,.35); }
+  #building .solargrid { height: 46%; border-radius: 4px; position: relative; overflow: hidden;
               background:
-                repeating-linear-gradient(0deg, #1d323c 0 10px, #12222b 10px 12px),
-                repeating-linear-gradient(90deg, #1d323c 0 16px, #12222b 16px 18px);
-              background-blend-mode: multiply; border: 1px solid #23404a; }
+                repeating-linear-gradient(0deg, #20394a 0 9px, #14242f 9px 11px),
+                repeating-linear-gradient(90deg, #20394a 0 15px, #14242f 15px 17px);
+              border: 1px solid #2a4d5c;
+              box-shadow: inset 0 0 0 1px rgba(0,0,0,.3), inset 0 1px 0 rgba(190,225,240,.08); }
+  #building .solargrid:after { content: ""; position: absolute; inset: 0;
+              background: linear-gradient(115deg, transparent 42%, rgba(175,215,235,.07) 50%, transparent 58%); }
   #building .bld-name { font-size: 12.5px; font-weight: 600; margin-top: 8px; color: #c7d2de; }
   #building .bld-solar { font-size: 12px; color: #cfa964; margin-top: 2px; }
   #building .bld-solar .dim { color: #5d6f85; font-size: 11px; }
   .infobox { position: absolute; top: 3%; width: 24%; background: #101a29;
-             border: 1px solid #1b2534; border-radius: 8px; padding: 10px 13px; }
+             border: 1px solid #1b2534; border-radius: 8px; padding: 10px 13px;
+             box-shadow: 0 6px 14px rgba(0,0,0,.3); }
   #dlm { left: 38%; }
-  #xfmr { right: 2%; width: 23%; }
+  #xfmr { right: 2%; width: 23%;
+          background: repeating-linear-gradient(90deg, #111b2a 0 11px, #0d1624 11px 13px); }
   .infobox .t { font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: #66788e; }
   .infobox .v { font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; color: #dde6ef; }
   .infobox .v b { color: #63b3a6; font-weight: 600; }
@@ -105,16 +113,38 @@
                       transition: width .6s, background .6s; }
   .infobox .dlmfill.amber { background: #cfa964; }
   .infobox .dlmfill.red { background: #c48383; }
-  #busline { position: absolute; left: 2%; right: 2%; top: 32.5%; height: 1px; background: #1d2837; }
-  .rowlbl { position: absolute; left: 2%; font-size: 10.5px; text-transform: uppercase;
-            letter-spacing: .09em; color: #55677e; }
-  #evslots { position: absolute; left: 2%; right: 2%; top: 34%; height: 31%; display: flex; gap: 10px; }
-  .slot { flex: 1; border-left: 1px dashed #1f2c40; border-right: 1px dashed #1f2c40;
+  /* ground zones: EV pad (soft teal wash) vs plain parking pad, with
+     painted-on ground labels, and the driving lane between them */
+  .zone { position: absolute; left: 1.2%; right: 1.2%; border-radius: 12px; }
+  #evzone { top: 30.5%; height: 34.5%;
+            background: linear-gradient(180deg, rgba(99,179,166,.055), rgba(99,179,166,.018));
+            border: 1px solid rgba(99,179,166,.20); }
+  #parkzone { top: 68.4%; height: 19.2%;
+              background: rgba(148,170,200,.028); border: 1px solid #182434; }
+  .groundlbl { position: absolute; left: 0; right: 0; bottom: 7px; text-align: center;
+               font-size: 12px; font-weight: 600; letter-spacing: .38em;
+               text-transform: uppercase; pointer-events: none; }
+  #evzone .groundlbl { color: rgba(99,179,166,.20); }
+  #parkzone .groundlbl { color: rgba(165,185,210,.13); }
+  #lane { position: absolute; left: 0; right: 0; top: 65.3%; height: 3.1%;
+          background: rgba(200,218,240,.016); }
+  #lane:before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+          background: repeating-linear-gradient(90deg, rgba(200,215,235,.14) 0 26px, transparent 26px 54px); }
+  #evslots { position: absolute; left: 2%; right: 2%; top: 31.5%; height: 32%; display: flex; gap: 10px; }
+  .slot { flex: 1; position: relative; border-left: 1px solid rgba(170,215,205,.11);
+          border-right: 1px solid rgba(170,215,205,.11);
           display: flex; flex-direction: column; align-items: center; padding-top: 5px; cursor: pointer; }
-  .slot .ped { width: 30px; height: 22px; border-radius: 4px; background: #141e2c;
-               border: 1px solid #263449; color: #66788e; font-size: 12px;
-               display: flex; align-items: center; justify-content: center; }
-  .slot .ped.on { color: #63b3a6; border-color: #3d7a70; }
+  .slot .evmark { position: absolute; top: 7px; left: calc(50% + 27px); font-size: 10px;
+                  font-weight: 600; letter-spacing: .24em; color: rgba(99,179,166,.38); }
+  .slot .ped { width: 27px; height: 31px; border-radius: 5px; position: relative;
+               background: linear-gradient(180deg, #1a2637, #121c2b);
+               border: 1px solid #2b3c56; color: #7d92ab; font-size: 12px;
+               display: flex; align-items: center; justify-content: center;
+               box-shadow: 0 3px 6px rgba(0,0,0,.4); }
+  .slot .ped:before { content: ""; position: absolute; top: 4px; left: 50%; margin-left: -5px;
+               width: 10px; height: 7px; border-radius: 2px; background: #22344c; }
+  .slot .ped.on { color: #8fd0c4; border-color: #3d7a70; }
+  .slot .ped.on:before { background: rgba(99,179,166,.75); }
   .slot .spacer { flex: 1; }
   .slot .slotbar { width: 82%; height: 6px; background: #1a2434; border-radius: 3px; overflow: hidden; }
   .slot .slotfill { height: 100%; width: 0%; background: #4f9689; transition: width .6s; }
@@ -125,36 +155,53 @@
   .slotstatus.Offline, .slotstatus.Unavailable { color: #5d6f85; }
   .slotstatus.Faulted { color: #c48383; } .slotstatus.Reserved { color: #a79bc4; }
   #parkslots { position: absolute; left: 2%; right: 2%; top: 69%; height: 17%; display: flex; gap: 6px; }
-  .pspot { flex: 1; border: 1px dashed #1a2636; border-bottom: none; border-radius: 5px 5px 0 0;
+  .pspot { flex: 1; border: 1px solid rgba(160,180,205,.09); border-bottom: none; border-radius: 5px 5px 0 0;
            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
            padding-bottom: 4px; }
   .pspot .plbl { font-size: 10.5px; color: #4d5d72; }
   .car2 { position: absolute; width: 52px; height: 76px; margin-left: -26px;
           transition: left 1.6s ease, top 1.6s ease, opacity .9s ease; z-index: 5; }
   .car2.clickable { cursor: pointer; }
-  .carbody { width: 100%; height: 58px; border-radius: 14px; border: 1.5px solid #45536a;
-             position: relative; }
-  .carbody:before { content: ""; position: absolute; left: 6px; right: 6px; top: 11px; height: 14px;
-                    border-radius: 5px; background: #a8c8dd; opacity: .30; }
-  .carbody:after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 8px; height: 10px;
-                   border-radius: 5px; background: #a8c8dd; opacity: .18; }
-  .car2.charging .carbody { border-color: #63b3a6; }
-  .car2 .carlbl { margin-top: 3px; text-align: center; font-size: 10.5px; color: #a9b8c9;
-                  font-weight: 500; white-space: nowrap; }
-  .car2 .socmini { height: 4px; background: #1a2434; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+  .carbody { width: 100%; height: 58px; border-radius: 13px; border: 1.5px solid rgba(8,12,18,.6);
+             position: relative; overflow: hidden;
+             box-shadow: 0 4px 9px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12);
+             transition: transform .45s ease; }
+  .carbody:before, .carbody:after { content: ""; position: absolute; top: 3px; width: 5px; height: 5px;
+                    border-radius: 50%; background: rgba(243,232,196,.6); z-index: 2; }
+  .carbody:before { left: 6px; }
+  .carbody:after { right: 6px; }
+  .carbody .glassF { position: absolute; left: 7px; right: 7px; top: 8px; height: 12px;
+                    border-radius: 4px;
+                    background: linear-gradient(180deg, rgba(196,224,238,.40), rgba(150,185,205,.18)); }
+  .carbody .roof { position: absolute; left: 6px; right: 6px; top: 24px; height: 19px;
+                    border-radius: 5px; background: rgba(255,255,255,.10);
+                    box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); }
+  .carbody .glassR { position: absolute; left: 8px; right: 8px; bottom: 6px; height: 8px;
+                    border-radius: 4px; background: rgba(170,205,225,.17); }
+  .car2.charging .carbody { border-color: rgba(99,179,166,.85);
+             box-shadow: 0 4px 9px rgba(0,0,0,.5), 0 0 0 1px rgba(99,179,166,.30),
+                         0 0 15px rgba(99,179,166,.13); }
+  .car2 .carlbl { margin-top: 3px; text-align: center; font-size: 10.5px; color: #b3c2d4;
+                  font-weight: 500; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+  .car2 .socmini { height: 4px; width: 44px; margin: 2px auto 0; background: #1a2434;
+                   border-radius: 2px; overflow: hidden; }
   .car2 .socfill { height: 100%; width: 0%; background: #4f9689; transition: width .6s; }
   .car2 .qbadge { position: absolute; top: -7px; right: -7px; min-width: 19px; height: 19px;
                   border-radius: 10px; background: #6b5836; color: #f0e2c4; font-size: 10.5px;
                   font-weight: 600; display: none; align-items: center; justify-content: center;
-                  padding: 0 4px; border: 1px solid #8a744a; }
+                  padding: 0 4px; border: 1px solid #8a744a; z-index: 6; }
   .car2.waiting .qbadge { display: flex; }
-  .cable2 { position: absolute; width: 2px; margin-left: -1px; top: 35%; height: 3.2%;
-            background: #63b3a6; z-index: 4;
+  .cable2 { position: absolute; width: 3px; margin-left: -1.5px; top: 36.4%; height: 6.9%;
+            border-radius: 2px; z-index: 4;
+            background: linear-gradient(180deg, #3d7a70, #63b3a6);
             opacity: 0; transition: opacity .5s; pointer-events: none; }
+  .cable2:after { content: ""; position: absolute; left: 50%; margin-left: -3px; bottom: -2px;
+            width: 6px; height: 6px; border-radius: 50%; background: #63b3a6; }
   #road { position: absolute; left: 0; right: 0; bottom: 0; height: 8.5%;
-          background: #0a0f18; border-top: 1px solid #1b2534; display: flex;
-          justify-content: space-between; align-items: center; padding: 0 16px;
+          background: linear-gradient(180deg, #0d1420, #0a0f18); border-top: 1px solid #22314a;
+          display: flex; justify-content: space-between; align-items: center; padding: 0 16px;
           font-size: 11.5px; color: #5d6f85; letter-spacing: .05em; }
+  #road .gate { color: #93a5ba; font-weight: 600; letter-spacing: .14em; }
 
   /* ---------- bay cards ---------- */
   .bays { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
@@ -216,7 +263,12 @@
     <button class="spdbtn" id="spd3">3×</button>
     <button class="spdbtn" id="spd10">10×</button>
     <button class="spdbtn" id="spd30">30×</button>
+    <button class="spdbtn" id="spd60">60×</button>
+    <button class="spdbtn" id="spd240">240×</button>
+    <button class="spdbtn" id="spd720">720×</button>
+    <button class="spdbtn" id="spd1440">1440×</button>
     <button class="warn" id="btnReset">Reset day</button>
+    <span class="lbl">1440× = a full day in ~1 min</span>
     <span class="lbl" id="simNote">the world lives on the server — everyone watching sees the same cars</span>
   </div>
 </header>
@@ -249,13 +301,13 @@
           <div class="v"><b id="xfPct">28%</b> load</div>
           <div class="s" id="xfBand">— · ₹—/kWh</div>
         </div>
-        <div id="busline"></div>
-        <div class="rowlbl" style="top:32.8%">Charging bays — shared</div>
+        <div class="zone" id="evzone"><div class="groundlbl">EV Charging</div></div>
+        <div id="lane"></div>
+        <div class="zone" id="parkzone"><div class="groundlbl">Parking</div></div>
         <div id="evslots"></div>
-        <div class="rowlbl" style="top:66.8%">Normal parking — cars wait here for a free bay</div>
         <div id="parkslots"></div>
         <div id="cars"></div>
-        <div id="road"><span>◀ GATE IN</span><span>10 residents · 4 shared bays</span><span>TO TOWERS ▶</span></div>
+        <div id="road"><span class="gate">◀ GATE IN</span><span>10 residents · 4 shared bays</span><span>TO TOWERS ▶</span></div>
       </div>
     </section>
     <section>
@@ -292,6 +344,15 @@
       <div class="wallets" id="wallets"><span>Resident wallets (from server): …</span></div>
     </section>
     <section class="panel">
+      <h2>Today — <span id="dDate">sim day</span></h2>
+      <span class="stat">Sessions today <b id="dSess">0</b></span>
+      <span class="stat">Energy today <b id="dKwh">0.000 kWh</b></span>
+      <span class="stat">Collected today <b id="dRev">₹0.00</b></span>
+      <span class="stat">Cars served today <b id="dCars">0</b></span>
+      <div class="wallets" id="dResidents"></div>
+      <div class="tf-note">per simulation day, from the server — resets at sim midnight</div>
+    </section>
+    <section class="panel">
       <h2>Payments</h2>
       <div id="payments"></div>
     </section>
@@ -310,6 +371,10 @@
   lives on the server, so everyone opening this page shares one world, and rejoining
   mid-session restores it exactly. A real charger pointed at this server would be billed
   identically. “Reset day” sends the cars home and clears the ledger; wallets persist.
+  Traffic follows the simulation clock — cars leave in the morning, the evening return
+  fills the bays and forms a queue, and charging runs overnight at the night rate — and
+  at 1440× a full simulation day passes in about a minute, with the day's sessions,
+  energy, revenue and cars served tallied in the rail and reset at sim midnight.
 </p>
 
 <script>
@@ -480,6 +545,9 @@ BAY_IDS.forEach(function (bayId, idx) {
   var ped = document.createElement("div");
   ped.className = "ped";
   ped.textContent = "⚡";
+  var evm = document.createElement("div");
+  evm.className = "evmark";
+  evm.textContent = "EV";
   var spacer = document.createElement("div");
   spacer.className = "spacer";
   var bar = document.createElement("div");
@@ -494,6 +562,7 @@ BAY_IDS.forEach(function (bayId, idx) {
   status.className = "slotstatus Offline";
   status.textContent = "Offline";
   slot.appendChild(ped);
+  slot.appendChild(evm);
   slot.appendChild(spacer);
   slot.appendChild(bar);
   slot.appendChild(lbl);
@@ -526,11 +595,16 @@ function buildCar(resident) {
   var wrap = document.createElement("div");
   wrap.className = "car2";
   wrap.style.left = "-12%";
-  wrap.style.top = "88%";
+  wrap.style.top = "90.3%";
   wrap.style.opacity = "0";
   var body = document.createElement("div");
   body.className = "carbody";
   body.style.background = resident.color;
+  ["glassF", "roof", "glassR"].forEach(function (cls) {
+    var part = document.createElement("div");
+    part.className = cls;
+    body.appendChild(part);
+  });
   var q = document.createElement("div");
   q.className = "qbadge";
   var lbl = document.createElement("div");
@@ -559,6 +633,105 @@ function carByTag(tag) {
   }
   return null;
 }
+/* Cars travel plausible paths — along the street, up their own column,
+   across the driving lane — instead of sliding diagonally. Movement is
+   staged in legs at viewing speeds (the car body turns for horizontal
+   legs); at fast-forward speeds the car is simply placed, so animation
+   never bottlenecks the simulation clock. */
+var LANE_TOP = 63.8, ROAD_TOP = 90.3;
+var carAnim = {};   // tag -> {key, pos, gen, timer}
+function carTargetPos(car, anim) {
+  if (car.state === "charging" && car.bay) {
+    return { left: bayCentrePct(BAY_IDS.indexOf(car.bay)), top: 43, zone: "bay" };
+  }
+  if (car.state !== "away" && car.spot !== null && car.spot !== undefined) {
+    return { left: spotCentrePct(car.spot), top: 71.5, zone: "spot" };
+  }
+  if (car.state !== "away" && anim) return anim.pos;   // transient: stay
+  return { left: -12, top: ROAD_TOP, zone: "away" };
+}
+function carPath(from, to) {
+  var pts = [];
+  var dir = to.left >= from.left ? 90 : -90;
+  if (from.zone === "away") {                    // street → column → slot
+    pts.push([to.left, ROAD_TOP, 90]);
+    pts.push([to.left, to.top, 0]);
+  } else if (to.zone === "away") {               // slot → street → out
+    pts.push([from.left, ROAD_TOP, 0]);
+    pts.push([-12, ROAD_TOP, -90]);
+  } else if (from.zone !== to.zone || from.left !== to.left) {
+    pts.push([from.left, LANE_TOP, 0]);          // out to the lane
+    pts.push([to.left, LANE_TOP, dir]);          // along the lane
+    pts.push([to.left, to.top, 0]);              // into the slot
+  }
+  return pts;
+}
+function placeCar(el, pos, opacity) {
+  el.wrap.style.transition = "none";
+  el.wrap.style.left = pos.left + "%";
+  el.wrap.style.top = pos.top + "%";
+  el.wrap.style.opacity = opacity;
+  el.body.style.transform = "";
+  void el.wrap.offsetWidth;
+  el.wrap.style.transition = "";
+}
+function finishCarMove(tag, gen) {
+  var el = carEls[tag], anim = carAnim[tag];
+  if (!el || !anim || anim.gen !== gen) return;
+  if (anim.timer) { clearTimeout(anim.timer); anim.timer = null; }
+  el.wrap.style.transition = "left .35s ease, top .35s ease, opacity .4s ease";
+  el.body.style.transform = "";
+  el.wrap.style.left = anim.pos.left + "%";
+  el.wrap.style.top = anim.pos.top + "%";
+  el.wrap.style.opacity = anim.pos.zone === "away" ? "0" : "1";
+}
+function runCarLegs(tag, pts, gen) {
+  var el = carEls[tag], anim = carAnim[tag];
+  if (!el || !anim || anim.gen !== gen) return;
+  if (clockBase.speed >= 60) { finishCarMove(tag, gen); return; }
+  if (!pts.length) {
+    anim.timer = null;
+    if (anim.pos.zone === "away") el.wrap.style.opacity = "0";
+    el.body.style.transform = "";
+    return;
+  }
+  var p = pts[0];
+  var curL = parseFloat(el.wrap.style.left) || 0;
+  var curT = parseFloat(el.wrap.style.top) || 0;
+  var dist = Math.hypot(p[0] - curL, p[1] - curT);
+  var dur = Math.min(0.95, Math.max(0.4, dist / 55));
+  el.wrap.style.transition =
+    "left " + dur + "s ease, top " + dur + "s ease, opacity .6s ease";
+  el.body.style.transform = p[2] ? "rotate(" + p[2] + "deg)" : "";
+  el.wrap.style.left = p[0] + "%";
+  el.wrap.style.top = p[1] + "%";
+  el.wrap.style.opacity = "1";
+  anim.timer = setTimeout(function () {
+    runCarLegs(tag, pts.slice(1), gen);
+  }, dur * 1000 + 30);
+}
+function moveCar(car, el) {
+  var anim = carAnim[car.tag];
+  var tp = carTargetPos(car, anim);
+  var key = tp.zone + "|" + tp.left + "|" + tp.top;
+  if (!anim) {                       // first sight: snapshot placement
+    carAnim[car.tag] = { key: key, pos: tp, gen: 0, timer: null };
+    placeCar(el, tp, tp.zone === "away" ? "0" : "1");
+    return;
+  }
+  if (anim.key === key) return;
+  var inTransit = !!anim.timer;
+  anim.gen++;
+  if (anim.timer) { clearTimeout(anim.timer); anim.timer = null; }
+  var from = anim.pos;
+  anim.key = key;
+  anim.pos = tp;
+  if (clockBase.speed >= 60) { finishCarMove(car.tag, anim.gen); return; }
+  var pts = inTransit ? [[tp.left, tp.top, 0]] : carPath(from, tp);
+  if (!pts.length) { finishCarMove(car.tag, anim.gen); return; }
+  runCarLegs(car.tag, pts, anim.gen);
+}
+
 function renderCars() {
   if (!world) return;
   world.cars.forEach(function (car) {
@@ -566,23 +739,13 @@ function renderCars() {
     if (!el) return;
     var wrap = el.wrap;
     if (car.state === "away") {
-      wrap.style.left = "-12%";
-      wrap.style.top = "88%";
-      wrap.style.opacity = "0";
       wrap.className = "car2";
-      return;
-    }
-    wrap.style.opacity = "1";
-    if (car.state === "charging" && car.bay) {
-      var idx = BAY_IDS.indexOf(car.bay);
-      wrap.style.left = bayCentrePct(idx) + "%";
-      wrap.style.top = "43%";
+    } else if (car.state === "charging" && car.bay) {
       wrap.className = "car2 charging clickable";
-    } else if (car.spot !== null && car.spot !== undefined) {
-      wrap.style.left = spotCentrePct(car.spot) + "%";
-      wrap.style.top = "71.5%";
+    } else {
       wrap.className = "car2" + (car.state === "waiting" ? " waiting" : "");
     }
+    moveCar(car, el);
     el.socFill.style.width = Math.max(0, Math.min(100, car.soc)).toFixed(0) + "%";
     el.socFill.style.background = car.state === "charging" ? "#4f9689" : "#5d7186";
     if (car.state === "waiting" && car.queuePos) {
@@ -716,6 +879,28 @@ function renderLedger() {
   document.getElementById("tKwh").textContent = world.ledger.kwh.toFixed(3) + " kWh";
   document.getElementById("tRev").textContent = "₹" + world.ledger.revenue.toFixed(2);
   document.getElementById("tSess").textContent = String(world.ledger.sessions);
+  var dt = world.dayTally;
+  if (dt) {
+    document.getElementById("dDate").textContent = dt.date || "sim day";
+    document.getElementById("dSess").textContent = String(dt.sessions);
+    document.getElementById("dKwh").textContent = Number(dt.kwh).toFixed(3) + " kWh";
+    document.getElementById("dRev").textContent = "₹" + Number(dt.revenue).toFixed(2);
+    document.getElementById("dCars").textContent = String(dt.carsServed);
+    var dr = document.getElementById("dResidents");
+    var byRes = dt.byResident || {};
+    var tags = Object.keys(byRes);
+    if (!tags.length) {
+      dr.innerHTML = "<span>No sessions yet today.</span>";
+    } else {
+      dr.innerHTML = tags.map(function (tag) {
+        var p = byRes[tag];
+        return '<span><span class="who">' + esc(residentLabel(tag)) + "</span> · " +
+          p.sessions + (p.sessions === 1 ? " session" : " sessions") + " · " +
+          Number(p.kwh).toFixed(2) + " kWh · <b>₹" +
+          Number(p.revenue).toFixed(2) + "</b></span>";
+      }).join("<br/>");
+    }
+  }
 }
 function renderWallets() {
   var el = document.getElementById("wallets");
@@ -801,10 +986,11 @@ var obs = null;
 function sendControl(obj) {
   if (obs && obs.readyState === WebSocket.OPEN) obs.send(JSON.stringify(obj));
 }
+var SPEEDS = [1, 3, 10, 30, 60, 240, 720, 1440];
 function renderControls() {
   var btn = document.getElementById("btnTraffic");
   btn.textContent = clockBase.playing ? "⏸ Pause traffic" : "▶ Play traffic";
-  [1, 3, 10, 30].forEach(function (n) {
+  SPEEDS.forEach(function (n) {
     document.getElementById("spd" + n).className =
       "spdbtn" + (clockBase.speed === n ? " on" : "");
   });
@@ -812,7 +998,7 @@ function renderControls() {
 document.getElementById("btnTraffic").addEventListener("click", function () {
   sendControl({ control: "SimTraffic", playing: !clockBase.playing });
 });
-[1, 3, 10, 30].forEach(function (n) {
+SPEEDS.forEach(function (n) {
   document.getElementById("spd" + n).addEventListener("click", function () {
     sendControl({ control: "SimSpeed", speed: n });
   });

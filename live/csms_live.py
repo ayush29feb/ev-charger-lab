@@ -63,7 +63,7 @@ import random
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -492,10 +492,14 @@ class ChargePointConnection:
         world = globals().get("WORLD")
         if world is not None:
             summary_event["atSim"] = world.sim_clock_text()
+            summary_event["atSimDate"] = (
+                world.sim_datetime().date().isoformat())
         await broadcast(summary_event)
         LEDGER["sessions"] += 1
         LEDGER["kwh"] = round(LEDGER["kwh"] + summary_event["kwh"], 3)
         LEDGER["revenue"] = round(LEDGER["revenue"] + cost, 2)
+        if world is not None:
+            world.record_day_session(id_tag, summary_event["kwh"], cost)
         PAYMENTS.insert(0, {k: v for k, v in summary_event.items()
                             if k != "event"})
         del PAYMENTS[PAYMENTS_CAP:]
@@ -673,33 +677,66 @@ class SimChargePoint:
             self.tx_id = (start or {}).get("transactionId")
             await self._status("Charging")
             await world.on_session_started(self.id, car, gen)
-            last = time.monotonic()
+            # Meter intervals are sized in SIM time (~2 min each), so the
+            # real sleep shrinks as speed grows. At 1440x one old 0.5 s
+            # tick was 12 sim-minutes: a whole interval could straddle a
+            # tariff-band boundary and be priced at the wrong band, and
+            # SoC jumped in coarse steps. Any oversized step that still
+            # slips through (lag, a speed change mid-sleep) is split at
+            # band boundaries below, each slice with its own timestamp.
+            last_sim_ms = world.now_ms
+            last_real = time.monotonic()
             while not self.stop_requested:
-                await asyncio.sleep(0.5)
-                now = time.monotonic()
-                dt_sim_s = (now - last) * world.speed
-                last = now
-                power = _taper_power_w(car["soc"])
-                wh = power * dt_sim_s / 3600.0
-                self.register += wh
-                car["soc"] = min(
-                    100.0, car["soc"] + wh / (car["battery_kwh"] * 10.0))
-                await self.call("MeterValues", {
-                    "connectorId": 1, "transactionId": self.tx_id,
-                    "meterValue": [{
-                        "timestamp": world.sim_iso(),
-                        "sampledValue": [
-                            {"value": f"{self.register:.1f}",
-                             "measurand": "Energy.Active.Import.Register",
-                             "unit": "Wh"},
-                            {"value": f"{power:.0f}",
-                             "measurand": "Power.Active.Import",
-                             "unit": "W"},
-                            {"value": f"{car['soc']:.1f}",
-                             "measurand": "SoC", "unit": "Percent"},
-                        ],
-                    }],
-                })
+                await asyncio.sleep(min(
+                    0.5, max(0.05, 120.0 / max(1, world.speed))))
+                cur_sim_ms = world.now_ms
+                dt_sim_s = (cur_sim_ms - last_sim_ms) / 1000.0
+                if dt_sim_s <= 0:   # world clock stood still / reset
+                    dt_sim_s = ((time.monotonic() - last_real)
+                                * world.speed)
+                    cur_sim_ms = last_sim_ms + dt_sim_s * 1000.0
+                last_real = time.monotonic()
+                remaining = dt_sim_s
+                cursor_ms = last_sim_ms
+                last_sim_ms = cur_sim_ms
+                while remaining > 0 and not self.stop_requested:
+                    cursor_dt = datetime.fromtimestamp(cursor_ms / 1000.0)
+                    boundary_ms = (
+                        cursor_dt.replace(minute=0, second=0,
+                                          microsecond=0)
+                        + timedelta(hours=1)).timestamp() * 1000.0
+                    chunk_s = min(remaining,
+                                  (boundary_ms - cursor_ms) / 1000.0,
+                                  3600.0)
+                    if chunk_s <= 0:
+                        chunk_s = min(remaining, 60.0)
+                    power = _taper_power_w(car["soc"])
+                    wh = power * chunk_s / 3600.0
+                    self.register += wh
+                    car["soc"] = min(
+                        100.0,
+                        car["soc"] + wh / (car["battery_kwh"] * 10.0))
+                    cursor_ms += chunk_s * 1000.0
+                    remaining -= chunk_s
+                    await self.call("MeterValues", {
+                        "connectorId": 1, "transactionId": self.tx_id,
+                        "meterValue": [{
+                            "timestamp": world.iso_at(cursor_ms),
+                            "sampledValue": [
+                                {"value": f"{self.register:.1f}",
+                                 "measurand":
+                                     "Energy.Active.Import.Register",
+                                 "unit": "Wh"},
+                                {"value": f"{power:.0f}",
+                                 "measurand": "Power.Active.Import",
+                                 "unit": "W"},
+                                {"value": f"{car['soc']:.1f}",
+                                 "measurand": "SoC", "unit": "Percent"},
+                            ],
+                        }],
+                    })
+                    if car["soc"] >= car["target_soc"]:
+                        break
                 if car["soc"] >= car["target_soc"]:
                     break
             meter_stop = int(round(self.register))
@@ -725,7 +762,8 @@ class SimChargePoint:
 class SimWorld:
     """Cars, shared bays, parking, the queue and the traffic engine."""
 
-    SPEEDS = (1, 3, 10, 30)
+    # 1440x runs a full simulation day in ~60 s of real time.
+    SPEEDS = (1, 3, 10, 30, 60, 240, 720, 1440)
 
     def __init__(self, base_url: str):
         self.speed = 1
@@ -743,6 +781,11 @@ class SimWorld:
             for i, bay in enumerate(SIM_BAYS)
         }
         self.next_arrival_ms = None
+        # Per-sim-day tallies (reset at sim midnight by _roll_day()).
+        self.day_key = self.sim_datetime().date().isoformat()
+        self.day_tally = {"sessions": 0, "kwh": 0.0, "revenue": 0.0}
+        self._day_served: set = set()
+        self._day_by_tag: dict = {}
 
     @staticmethod
     def _fresh_car(tag: str) -> dict:
@@ -762,6 +805,46 @@ class SimWorld:
 
     def sim_band(self):
         return tariff_band(self.sim_datetime().hour)
+
+    @staticmethod
+    def iso_at(ms: float) -> str:
+        return datetime.fromtimestamp(ms / 1000.0).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
+
+    # -- per-day tallies ----------------------------------------------------
+    def _roll_day(self) -> None:
+        """Reset the day tally when the sim clock crosses midnight."""
+        key = self.sim_datetime().date().isoformat()
+        if key != self.day_key:
+            self.day_key = key
+            self.day_tally = {"sessions": 0, "kwh": 0.0, "revenue": 0.0}
+            self._day_served = set()
+            self._day_by_tag = {}
+
+    def record_day_session(self, id_tag: str, kwh: float,
+                           cost: float) -> None:
+        self._roll_day()
+        self.day_tally["sessions"] += 1
+        self.day_tally["kwh"] = round(self.day_tally["kwh"] + kwh, 3)
+        self.day_tally["revenue"] = round(
+            self.day_tally["revenue"] + cost, 2)
+        if id_tag:
+            self._day_served.add(id_tag)
+            per = self._day_by_tag.setdefault(
+                id_tag, {"sessions": 0, "kwh": 0.0, "revenue": 0.0})
+            per["sessions"] += 1
+            per["kwh"] = round(per["kwh"] + kwh, 3)
+            per["revenue"] = round(per["revenue"] + cost, 2)
+
+    def day_tally_view(self) -> dict:
+        self._roll_day()
+        return {"date": self.day_key,
+                "sessions": self.day_tally["sessions"],
+                "kwh": self.day_tally["kwh"],
+                "revenue": self.day_tally["revenue"],
+                "carsServed": len(self._day_served),
+                "byResident": {tag: dict(per)
+                               for tag, per in self._day_by_tag.items()}}
 
     # -- snapshot ---------------------------------------------------------
     def _session_view(self, cp_id: str):
@@ -808,6 +891,7 @@ class SimWorld:
             ],
             "queue": list(self.queue),
             "ledger": dict(LEDGER),
+            "dayTally": self.day_tally_view(),
             "payments": list(PAYMENTS),
         }
 
@@ -817,7 +901,10 @@ class SimWorld:
     async def sim_event(self, kind: str, text: str, **fields) -> None:
         log("SIM", text)
         await broadcast({"event": "sim_event", "kind": kind,
-                         "text": text, **fields})
+                         "text": text,
+                         "atSim": self.sim_clock_text(),
+                         "atSimDate": self.sim_datetime().date().isoformat(),
+                         **fields})
 
     # -- helpers ------------------------------------------------------------
     def _free_spot(self):
@@ -838,6 +925,57 @@ class SimWorld:
     def _who(tag: str) -> str:
         r = RESIDENTS[tag]
         return f"{r['name']} ({r['flat']})"
+
+    def _dwell_until_ms(self) -> float:
+        """When a parked (not charging, not waiting) car next leaves.
+
+        Cars that come home in the evening or at night stay until the
+        next morning's departure window (~07:00-09:00); daytime parkers
+        stay a shorter, ordinary while."""
+        now = self.sim_datetime()
+        if now.hour >= 17 or now.hour < 6:
+            morning = now.replace(hour=7, minute=0, second=0,
+                                  microsecond=0)
+            if morning.timestamp() * 1000.0 <= self.now_ms:
+                morning = morning + timedelta(days=1)
+            return (morning.timestamp() * 1000.0
+                    + random.uniform(0, 120) * 60000)
+        return self.now_ms + random.uniform(30, 120) * 60000
+
+    @staticmethod
+    def _traffic_profile(hour: int) -> dict:
+        """Arrival pattern for one sim hour: how often cars come home,
+        how likely they want a charge, and how fast parked cars leave.
+
+        interval: (min, max) sim-minutes between arrivals;
+        charge_prob: share of arrivals that want to charge;
+        leave_rate: departures per sim-hour for each parked car."""
+        if hour >= 23 or hour < 6:      # overnight: sparse, mostly charging
+            return {"interval": (15, 30), "charge_prob": 0.9,
+                    "leave_rate": 0.02}
+        if hour < 7:                    # early morning
+            return {"interval": (12, 25), "charge_prob": 0.8,
+                    "leave_rate": 0.15}
+        if hour < 9:                    # morning departures 07:00-09:00
+            return {"interval": (18, 35), "charge_prob": 0.35,
+                    "leave_rate": 1.2}
+        if hour < 16:                   # quieter midday
+            return {"interval": (10, 22), "charge_prob": 0.55,
+                    "leave_rate": 0.10}
+        if hour < 17:                   # build-up to the evening return
+            return {"interval": (8, 15), "charge_prob": 0.75,
+                    "leave_rate": 0.05}
+        if hour < 20:                   # evening return rush 17:00-20:00
+            return {"interval": (3, 7), "charge_prob": 0.9,
+                    "leave_rate": 0.03}
+        # 20:00-23:00 — evening wind-down, cars settle in to charge
+        return {"interval": (8, 18), "charge_prob": 0.85,
+                "leave_rate": 0.03}
+
+    def _next_arrival_ms(self) -> float:
+        lo, hi = self._traffic_profile(
+            self.sim_datetime().hour)["interval"]
+        return self.now_ms + random.uniform(lo, hi) * 60000
 
     # -- bay assignment / queue ---------------------------------------------
     async def assign_bay(self, bay_id: str, car: dict,
@@ -893,8 +1031,7 @@ class SimWorld:
             if spot is not None:
                 car["spot"] = spot
                 car["state"] = "parked"
-                car["dwell_until"] = (
-                    self.now_ms + random.uniform(25, 100) * 60000)
+                car["dwell_until"] = self._dwell_until_ms()
                 await self.sim_event(
                     "charge_done",
                     f"{self._who(car['tag'])} finished at {bay_id} — "
@@ -914,9 +1051,20 @@ class SimWorld:
                      direct_bay: str = None) -> None:
         car = self.cars[tag]
         car["battery_kwh"] = round(random.uniform(24, 36), 1)
+        hour = self.sim_datetime().hour
         if wants_charge:
-            car["soc"] = round(random.uniform(55, 80), 1)
-            car["target_soc"] = round(random.uniform(86, 93), 1)
+            # Cars coming home in the evening rush or for the night are
+            # emptier after the day's driving, so their sessions run
+            # longer and the bays (and queue) stay busy.
+            if 17 <= hour < 22:
+                car["soc"] = round(random.uniform(22, 48), 1)
+            elif hour >= 22 or hour < 6:
+                car["soc"] = round(random.uniform(30, 55), 1)
+            elif 7 <= hour < 9:
+                car["soc"] = round(random.uniform(40, 65), 1)
+            else:
+                car["soc"] = round(random.uniform(45, 75), 1)
+            car["target_soc"] = round(random.uniform(88, 95), 1)
         else:
             car["soc"] = round(random.uniform(30, 85), 1)
             car["target_soc"] = car["soc"]
@@ -960,7 +1108,7 @@ class SimWorld:
             return
         car["spot"] = spot
         car["state"] = "parked"
-        car["dwell_until"] = self.now_ms + random.uniform(30, 120) * 60000
+        car["dwell_until"] = self._dwell_until_ms()
         await self.sim_event(
             "park", f"{self._who(tag)} parked in P{spot + 1}",
             tag=tag, spot=spot)
@@ -973,24 +1121,34 @@ class SimWorld:
             now_real = time.monotonic()
             dt = now_real - self._last_tick
             self._last_tick = now_real
+            dt_sim_s = 0.0
             if dt > 0:
-                self.now_ms += dt * 1000.0 * self.speed
+                dt_sim_s = dt * self.speed
+                self.now_ms += dt_sim_s * 1000.0
+            self._roll_day()
+            profile = self._traffic_profile(self.sim_datetime().hour)
             if self.playing:
                 if self.next_arrival_ms is None:
-                    self.next_arrival_ms = (
-                        self.now_ms + random.uniform(4, 12) * 60000)
+                    self.next_arrival_ms = self._next_arrival_ms()
                 if self.now_ms >= self.next_arrival_ms:
-                    self.next_arrival_ms = (
-                        self.now_ms + random.uniform(4, 12) * 60000)
+                    self.next_arrival_ms = self._next_arrival_ms()
                     away = [t for t, c in self.cars.items()
                             if c["state"] == "away"]
                     if away:
-                        await self.arrive(random.choice(away),
-                                          wants_charge=random.random() < 0.8)
+                        await self.arrive(
+                            random.choice(away),
+                            wants_charge=random.random()
+                            < profile["charge_prob"])
+            # Departures: dwell expiry for every parked car, plus a
+            # pattern-driven rate — high in the 07:00-09:00 morning
+            # departure window, near zero overnight and in the evening.
+            leave_p = profile["leave_rate"] * dt_sim_s / 3600.0
             for car in list(self.cars.values()):
-                if (car["state"] == "parked"
-                        and car["dwell_until"] is not None
-                        and self.now_ms >= car["dwell_until"]):
+                if car["state"] != "parked":
+                    continue
+                due = (car["dwell_until"] is not None
+                       and self.now_ms >= car["dwell_until"])
+                if due or (leave_p > 0 and random.random() < leave_p):
                     car["state"] = "away"
                     car["spot"] = None
                     car["dwell_until"] = None
@@ -998,7 +1156,10 @@ class SimWorld:
                         "leave", f"{self._who(car['tag'])} left the building",
                         tag=car["tag"])
                     await self.broadcast_world()
-            if now_real - self._last_clock_broadcast >= 2.0:
+            # At high speeds the world moves fast in real time too, so
+            # broadcast more often or the page would only see jumps.
+            interval = 0.5 if self.speed >= 60 else 2.0
+            if now_real - self._last_clock_broadcast >= interval:
                 self._last_clock_broadcast = now_real
                 await broadcast({"event": "sim",
                                  "nowMs": int(self.now_ms),
@@ -1069,6 +1230,10 @@ class SimWorld:
         self.bays = {bay: {"car": None, "phase": "free"} for bay in SIM_BAYS}
         self.now_ms = time.time() * 1000.0
         self.next_arrival_ms = None
+        self.day_key = self.sim_datetime().date().isoformat()
+        self.day_tally = {"sessions": 0, "kwh": 0.0, "revenue": 0.0}
+        self._day_served = set()
+        self._day_by_tag = {}
         LEDGER.update({"sessions": 0, "kwh": 0.0, "revenue": 0.0})
         PAYMENTS.clear()
         await self.sim_event("reset", "day reset — cars home, queue cleared")
