@@ -1,0 +1,13 @@
+# Render Blueprint — one-click deploy of the live OCPP lab.
+# Render exposes a single port per web service; csms_live.py detects the
+# PORT env var Render sets and serves HTTP + the OCPP WebSocket on it.
+services:
+  - type: web
+    name: ev-charger-lab
+    runtime: python
+    plan: starter
+    buildCommand: pip install websockets==17.4
+    startCommand: python live/csms_live.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0

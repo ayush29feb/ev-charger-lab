@@ -43,6 +43,7 @@ Dependencies: Python 3.12 stdlib + `websockets` only (same venv as the lab).
 import asyncio
 import itertools
 import json
+import os
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -482,7 +483,38 @@ def _select_subprotocol(connection, subprotocols):
     return None
 
 
+def _single_port_http(connection, request, port: int):
+    """Single-port mode (PORT env set, e.g. Render / Railway / Cloud Run):
+    hosts that expose only ONE public port get plain HTTP requests answered
+    here (the visualizer page, with its WS port rewritten to this port),
+    while WebSocket upgrade requests fall through to the OCPP handler."""
+    if (request.headers.get("Upgrade") or "").lower() == "websocket":
+        return None
+    path = (request.path or "/").split("?")[0]
+    if path == "/healthz":
+        return connection.respond(200, "ok")
+    if path in ("/", "/visualizer.html"):
+        html = (LIVE_DIR / "visualizer.html").read_text(encoding="utf-8")
+        html = html.replace('HOST + ":9001"', f'HOST + ":{port}"')
+        resp = connection.respond(200, html)
+        resp.headers["Content-Type"] = "text/html; charset=utf-8"
+        return resp
+    return connection.respond(404, "not found")
+
+
 async def main() -> None:
+    port_env = os.environ.get("PORT")
+    if port_env:
+        # Single-port mode: HTTP + OCPP WebSocket share one port (PaaS hosts
+        # like Render/Railway/Cloud Run expose exactly one port per service).
+        port = int(port_env)
+        server = await serve(on_connect, "0.0.0.0", port,
+                             subprotocols=["ocpp1.6"],
+                             select_subprotocol=_select_subprotocol,
+                             process_request=lambda c, r: _single_port_http(c, r, port))
+        log("CSMS", f"SINGLE-PORT mode on {port}: http://0.0.0.0:{port}/visualizer.html + ws://0.0.0.0:{port}/<charge_point_id> (OCPP 1.6J) + /observe")
+        await server.wait_closed()
+        return
     start_http_server()
     server = await serve(on_connect, "0.0.0.0", WS_PORT,
                          subprotocols=["ocpp1.6"],

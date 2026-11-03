@@ -38,6 +38,18 @@ python csms_live.py            # needs: pip install websockets
 The root lab's Python charger can also connect as a hardware stand-in:
 `python ../charge_point_sim.py` (points at ws://localhost:9001/SIM_001).
 
+## Other hosts (single-port mode)
+
+If the `PORT` environment variable is set (Render, Railway, Cloud Run and
+most PaaS hosts set it automatically and expose exactly **one** public port),
+`csms_live.py` switches to single-port mode: the visualizer page, `/healthz`,
+the OCPP WebSocket endpoint and `/observe` all share that one port, and the
+visualizer is served with its WebSocket port rewritten to match. A
+`render.yaml` Blueprint for Render is included at the repo root; the root
+Dockerfile also works as-is on Railway / Koyeb / Northflank / any VPS
+(`docker build . && docker run -e PORT=8080 -p 8080:8080 <image>` — or leave
+`PORT` unset on a VPS and publish both 8080 and 9001 in two-port mode).
+
 ## Deploy to Fly.io
 
 GitHub Pages cannot host this version (Pages is static-only; a real server
