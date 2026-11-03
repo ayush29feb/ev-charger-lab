@@ -5,7 +5,7 @@ services:
   - type: web
     name: ev-charger-lab
     runtime: python
-    plan: starter
+    plan: free
     buildCommand: pip install websockets==17.4
     startCommand: python live/csms_live.py
     envVars:
