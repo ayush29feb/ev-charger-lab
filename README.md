@@ -62,3 +62,13 @@ SESSION SUMMARY   -> total 0.062 kWh, duration 30.1 s, cost ₹1.12 @ ₹18/kWh
 
 The tiny energy figure is real physics, not a bug: 7.4 kW for 30 seconds is
 only ~0.06 kWh. A real overnight session at this rate would deliver ~50 kWh.
+
+## Web simulator
+
+`index.html` is a single-file, game-style visualization of this lab: cars drive
+into bays on one side while the OCPP 1.6J message exchange streams on the other
+(BootNotification -> Authorize -> StartTransaction -> MeterValues ->
+StopTransaction, billed at ₹18/kWh). No build step and no server — open the
+file in a browser, or host it free with GitHub Pages: repo **Settings -> Pages
+-> Deploy from a branch -> main / (root)**, then it is live at
+`https://ayush29feb.github.io/ev-charger-lab/`.

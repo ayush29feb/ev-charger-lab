@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>EV Charger Lab — Live Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#eef0ea;
+    --panel:#ffffff;
+    --panel-2:#f5f6f1;
+    --ink:#17201a;
+    --ink-2:#4c5a50;
+    --ink-3:#7d8a80;
+    --line:#d9ded2;
+    --accent:#0e9f6e;
+    --accent-ink:#067a53;
+    --amber:#d97706;
+    --chip:#e8ece2;
+    --term-bg:#0d130f;
+    --term-ink:#cfe3d4;
+    --shadow:0 1px 2px rgba(20,30,22,.06),0 8px 24px -12px rgba(20,30,22,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b0f0c;
+      --panel:#131a15;
+      --panel-2:#18211a;
+      --ink:#e7efe8;
+      --ink-2:#a9bbae;
+      --ink-3:#71806f;
+      --line:#263128;
+      --accent:#2ee6a8;
+      --accent-ink:#2ee6a8;
+      --amber:#f5b54a;
+      --chip:#1d2820;
+      --term-bg:#080c09;
+      --term-ink:#cfe3d4;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px -12px rgba(0,0,0,.6);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  .wrap{max-width:1440px;margin:0 auto;padding:18px 18px 28px}
+
+  /* ---------- top bar ---------- */
+  .topbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 18px;margin-bottom:14px}
+  .topbar h1{font-size:clamp(21px,3vw,30px);line-height:1.05;margin:0;font-weight:800;letter-spacing:-.02em}
+  .topbar h1 .thin{font-weight:500;color:var(--ink-2)}
+  .topbar .sub{color:var(--ink-2);font-size:13.5px;margin-top:5px;max-width:640px}
+  .live-pill{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:600;box-shadow:var(--shadow)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none}
+  .dot.pulse{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(46,230,168,.45)}55%{box-shadow:0 0 0 7px rgba(46,230,168,0)}}
+  @media (prefers-reduced-motion: reduce){.dot.pulse{animation:none}}
+
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow)}
+  .stat .k{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+  .stat .v{font-size:24px;font-weight:800;letter-spacing:-.01em;margin-top:3px;font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .stat .d{font-size:12px;color:var(--ink-2);margin-top:2px}
+
+  /* ---------- layout ---------- */
+  .layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;align-items:start}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+  .panel-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+  .panel-head h2{font-size:15px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .panel-head .tag{font-size:11.5px;color:var(--ink-2)}
+  .head-right{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+  .btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;
+    font:600 12.5px "Archivo",sans-serif;padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{border-color:var(--ink-3)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#06130c}
+  @media (prefers-color-scheme: light){.btn.primary{color:#fff}}
+  .btn[aria-pressed="true"]{background:var(--chip);border-color:var(--ink-3)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{appearance:none;border:0;background:var(--panel);color:var(--ink-2);font:600 12px "Archivo",sans-serif;
+    padding:7px 10px;cursor:pointer}
+  .seg button + button{border-left:1px solid var(--line)}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+  /* ---------- scene ---------- */
+  .scene-wrap{padding:14px 14px 10px}
+  .scene{
+    position:relative;width:100%;aspect-ratio:16/10.4;min-height:380px;border-radius:14px;overflow:hidden;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #232d26 0%, #1a211c 55%, #141a16 100%);
+    border:1px solid #2c3830;
+    color:#e8f0e9;
+  }
+  .scene .lot-label{position:absolute;top:10px;left:12px;font-size:11px;letter-spacing:.12em;font-weight:700;color:#8fa393;text-transform:uppercase;z-index:3}
+  .scene .clock-chip{position:absolute;top:8px;right:10px;z-index:3;background:rgba(8,12,9,.66);border:1px solid #33413a;
+    border-radius:8px;padding:4px 9px;font-size:11.5px;color:#bfe6cd}
+  /* bays */
+  .bay{position:absolute;top:6.5%;height:47%;width:21%;border:2px dashed rgba(232,240,233,.34);border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;z-index:1}
+  .bay.selected{border-color:var(--accent);background:rgba(46,230,168,.05)}
+  .bay .bay-no{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;letter-spacing:.14em;color:rgba(232,240,233,.5)}
+  .charger{position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:64%;max-width:86px;background:#222b25;border:1.5px solid #3d4d42;
+    border-radius:9px;padding:6px 7px 7px;z-index:4;box-shadow:0 6px 14px rgba(0,0,0,.45)}
+  .charger .cp-id{font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#9db8a5;text-align:center}
+  .charger .screen{margin-top:4px;background:#0a0f0b;border-radius:5px;padding:4px 5px;text-align:center;min-height:26px}
+  .charger .screen .st{font-size:10.5px;font-weight:700;color:#d7e8da;line-height:1.25}
+  .charger .screen .pw{font-size:9.5px;color:#7ee2b8}
+  .charger .ledrow{display:flex;justify-content:center;gap:5px;margin-top:5px}
+  .led{width:7px;height:7px;border-radius:50%;background:#3a4740}
+  .led.green{background:#2ee6a8;box-shadow:0 0 6px rgba(46,230,168,.8)}
+  .led.amber{background:#f5b54a;box-shadow:0 0 6px rgba(245,181,74,.8)}
+  .led.blue{background:#57b7ff;box-shadow:0 0 6px rgba(87,183,255,.8)}
+  .cable{position:absolute;top:52px;left:50%;width:60px;height:120px;transform:translateX(-6px);z-index:2;opacity:0;transition:opacity .3s;pointer-events:none}
+  .cable.on{opacity:1}
+  .cable path{fill:none;stroke:#0a0d0a;stroke-width:5;stroke-linecap:round}
+  .cable .pulse-line{stroke:#2ee6a8;stroke-width:2;stroke-dasharray:5 9;opacity:0}
+  .cable.flow .pulse-line{opacity:.95;animation:dashmove 1s linear infinite}
+  @keyframes dashmove{to{stroke-dashoffset:-14}}
+  @media (prefers-reduced-motion: reduce){.cable.flow .pulse-line{animation:none}}
+  /* road */
+  .road{position:absolute;left:0;right:0;bottom:0;height:24%;background:#11160f;border-top:2px solid #39463c;z-index:0}
+  .road::before{content:"";position:absolute;left:0;right:0;top:50%;height:0;border-top:3px dashed rgba(245,213,110,.55)}
+  .road .in-label,.road .out-label{position:absolute;top:6px;font-size:10px;letter-spacing:.14em;font-weight:700;color:#7d8f80}
+  .road .in-label{left:12px}.road .out-label{right:12px}
+  .queue-chip{position:absolute;left:12px;bottom:27%;z-index:3;background:rgba(8,12,9,.7);border:1px solid #33413a;color:#ffd98a;
+    border-radius:8px;padding:4px 9px;font-size:11.5px;font-weight:600;display:none}
+  .queue-chip.show{display:block}
+  /* cars */
+  .car{position:absolute;width:15.5%;max-width:104px;aspect-ratio:0.52;z-index:5;transform:translate(-50%,-50%);
+    filter:drop-shadow(0 10px 10px rgba(0,0,0,.45));will-change:left,top,transform}
+  .car svg{display:block;width:100%;height:100%}
+  .car .hud{position:absolute;left:50%;transform:translateX(-50%);bottom:-24px;width:86px;background:rgba(7,11,8,.82);
+    border:1px solid #33413a;border-radius:7px;padding:3px 6px 4px;pointer-events:none}
+  .car .hud .nm{font-size:8.5px;font-weight:600;color:#cfe3d4;white-space:nowrap;overflow:hidden;text-align:center}
+  .car .hud .bar{height:4px;border-radius:3px;background:#2c3830;margin-top:3px;overflow:hidden}
+  .car .hud .bar i{display:block;height:100%;background:#2ee6a8;border-radius:3px;transition:width .3s}
+  .car .hud .pct{font-size:9px;color:#8fd8b4;text-align:center;margin-top:2px}
+  .car.queued{opacity:.0}
+
+  /* flow stepper */
+  .flow{display:flex;flex-wrap:wrap;gap:0;padding:12px 16px 4px;align-items:center}
+  .flow .step{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink-3)}
+  .flow .step .n{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:10.5px;background:var(--panel)}
+  .flow .step.active{color:var(--accent-ink)}
+  .flow .step.active .n{border-color:var(--accent);background:var(--accent);color:#06130c}
+  @media (prefers-color-scheme: light){.flow .step.active .n{color:#fff}}
+  .flow .step.done{color:var(--ink-2)}
+  .flow .step.done .n{border-color:var(--accent);color:var(--accent-ink)}
+  .flow .arr{color:var(--ink-3);margin:0 7px;font-size:11px}
+  .bay-detail{padding:8px 16px 14px;font-size:13px;color:var(--ink-2);min-height:38px}
+  .bay-detail strong{color:var(--ink)}
+
+  /* ---------- terminal ---------- */
+  .term{background:var(--term-bg);color:var(--term-ink);height:560px;overflow-y:auto;padding:12px 12px 16px;
+    font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:12px;line-height:1.5;scroll-behavior:smooth}
+  .term-head-note{padding:9px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-2);background:var(--panel-2)}
+  .msg{border-left:3px solid #33413a;padding:6px 9px;margin:0 0 7px;border-radius:0 8px 8px 0;background:rgba(255,255,255,.025);cursor:pointer}
+  .msg:hover{background:rgba(255,255,255,.05)}
+  .msg.call{border-left-color:#57b7ff}
+  .msg.resp{border-left-color:#2ee6a8}
+  .msg.note{border-left-color:#f5b54a}
+  .msg.summary{border-left-color:#2ee6a8;background:rgba(46,230,168,.09);cursor:default}
+  .msg .row1{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+  .msg .t{color:#6f8574;font-size:11px}
+  .msg .dir{font-size:10px;font-weight:600;letter-spacing:.05em;padding:1px 6px;border-radius:99px;white-space:nowrap}
+  .dir.call{background:rgba(87,183,255,.16);color:#8ec9ff}
+  .dir.resp{background:rgba(46,230,168,.14);color:#7ee2b8}
+  .dir.note{background:rgba(245,181,74,.15);color:#ffd98a}
+  .msg .act{font-weight:600;color:#eef7ef}
+  .msg .sum{color:#a9c3ae}
+  .msg pre{display:none;margin:7px 0 2px;padding:8px;background:rgba(0,0,0,.4);border-radius:6px;overflow-x:auto;
+    font-size:11px;color:#bfe6cd;white-space:pre-wrap;word-break:break-word}
+  .msg.open pre{display:block}
+  body.raw-on .msg pre{display:block}
+  .msg.summary .big{font-size:12.5px;color:#eef7ef;font-weight:600}
+  .msg.summary .grid{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:3px;color:#a9c3ae}
+  .msg.summary .grid b{color:#7ee2b8;font-weight:600}
+  .term .boot-line{color:#6f8574;padding:2px 9px;margin-bottom:8px}
+
+  .foot{margin-top:14px;font-size:12.5px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 18px}
+  .foot a{color:var(--accent-ink);font-weight:600}
+
+  @media (max-width:1020px){
+    .layout{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(3,1fr)}
+    .term{height:480px}
+  }
+  @media (max-width:620px){
+    .wrap{padding:14px 12px 22px}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .stat .v{font-size:20px}
+    .scene{min-height:330px;aspect-ratio:auto;height:380px}
+    .scene .lot-label{display:none}
+    .scene .clock-chip{font-size:10px;padding:3px 7px}
+    .bay{width:22.5%}
+    .charger{width:94%;max-width:none;padding:5px 3px 6px}
+    .charger .cp-id{font-size:8.5px}
+    .charger .screen{padding:3px 2px;min-height:22px}
+    .charger .screen .st{font-size:9px}
+    .charger .screen .pw{font-size:8.5px}
+    .car{width:17%}
+    .live-pill{margin-left:0}
+    .term{height:440px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1>EV Charger Lab <span class="thin">— Live Simulator</span></h1>
+      <div class="sub">Your OCPP 1.6J lab, visualised: cars roll into the lot, plug in, and talk to the CSMS — watch the exact message exchange from the real run happen live on the right.</div>
+    </div>
+    <div class="live-pill"><span class="dot pulse" id="liveDot"></span><span id="liveLabel">CSMS listening · ws://localhost:9000</span></div>
+  </div>
+
+  <div class="stats" role="group" aria-label="Session totals">
+    <div class="stat"><div class="k">Active sessions</div><div class="v" id="stActive">0 <small>/ 4 bays</small></div><div class="d" id="stActiveD">All chargers idle</div></div>
+    <div class="stat"><div class="k">Energy delivered</div><div class="v" id="stEnergy">0.00 <small>kWh</small></div><div class="d">Across all sessions today</div></div>
+    <div class="stat"><div class="k">Revenue @ ₹18/kWh</div><div class="v" id="stRevenue">₹0.00</div><div class="d">Prepaid wallet debits</div></div>
+    <div class="stat"><div class="k">OCPP messages</div><div class="v" id="stMsgs">0</div><div class="d">Calls + responses exchanged</div></div>
+    <div class="stat"><div class="k">Cars served</div><div class="v" id="stCars">0</div><div class="d" id="stCarsD">Sessions completed</div></div>
+  </div>
+
+  <div class="layout">
+
+    <!-- ============ LEFT: SIMULATOR ============ -->
+    <section class="panel" aria-label="Charger simulator">
+      <div class="panel-head">
+        <h2>Charge point simulator</h2>
+        <span class="tag mono">4 × SimWallbox · Type 2 + AC001</span>
+        <div class="head-right">
+          <button class="btn primary" id="btnRun" aria-pressed="true">❚❚ Pause</button>
+          <button class="btn" id="btnAdd">＋ Send a car in</button>
+          <span class="seg" role="group" aria-label="Simulation speed">
+            <button data-speed="1" aria-pressed="true">1×</button><button data-speed="2" aria-pressed="false">2×</button><button data-speed="4" aria-pressed="false">4×</button>
+          </span>
+          <button class="btn" id="btnAuto" aria-pressed="true">Auto traffic: On</button>
+        </div>
+      </div>
+
+      <div class="scene-wrap">
+        <div class="scene" id="scene">
+          <div class="lot-label">Greenview Heights · Basement parking B1</div>
+          <div class="clock-chip mono" id="simClock">SIM 00:00 · 300× time</div>
+          <div id="bayLayer"></div>
+          <div class="road"><span class="in-label">▼ ENTRY</span><span class="out-label">EXIT ▼</span></div>
+          <div class="queue-chip" id="queueChip"></div>
+          <div id="carLayer"></div>
+        </div>
+      </div>
+
+      <div class="flow" id="flow" aria-label="OCPP session flow">
+        <span class="step" data-step="boot"><span class="n">1</span>BootNotification</span><span class="arr">→</span>
+        <span class="step" data-step="auth"><span class="n">2</span>Authorize</span><span class="arr">→</span>
+        <span class="step" data-step="start"><span class="n">3</span>StartTransaction</span><span class="arr">→</span>
+        <span class="step" data-step="meter"><span class="n">4</span>MeterValues</span><span class="arr">→</span>
+        <span class="step" data-step="stop"><span class="n">5</span>StopTransaction</span><span class="arr">→</span>
+        <span class="step" data-step="summary"><span class="n">6</span>Bill @ ₹18/kWh</span>
+      </div>
+      <div class="bay-detail" id="bayDetail">Tap any bay to inspect its charger. Cars boot, authorise with an RFID tag, charge at up to 7.4&nbsp;kW, and get billed when they unplug.</div>
+    </section>
+
+    <!-- ============ RIGHT: CSMS LOG ============ -->
+    <section class="panel" aria-label="CSMS server log">
+      <div class="panel-head">
+        <h2>CSMS server</h2>
+        <span class="tag mono">OCPP 1.6J · live feed</span>
+        <div class="head-right">
+          <span class="seg" role="group" aria-label="Message filter">
+            <button data-filter="all" aria-pressed="true">All</button><button data-filter="call" aria-pressed="false">Charger →</button><button data-filter="resp" aria-pressed="false">← Server</button><button data-filter="note" aria-pressed="false">Notes</button>
+          </span>
+          <button class="btn" id="btnRaw" aria-pressed="false">Raw JSON</button>
+          <button class="btn" id="btnScroll" aria-pressed="true">Auto-scroll</button>
+          <button class="btn" id="btnClear">Clear</button>
+        </div>
+      </div>
+      <div class="term" id="term" aria-live="off"></div>
+      <div class="term-head-note">Frames match the verified lab run (SIM_001, 7.4&nbsp;kW, meterStart 104520&nbsp;Wh, ₹18/kWh → ₹1.12 for 0.062&nbsp;kWh). Click any message to see its raw OCPP JSON.</div>
+    </section>
+  </div>
+
+  <div class="foot">
+    <span>Simulation runs entirely in this page — it mirrors <span class="mono">csms_server.py</span> + <span class="mono">charge_point_sim.py</span> from your ev-charger-lab repo.</span>
+    <span>Tariff ₹18/kWh · Heartbeat 30 s · Only tag <span class="mono">DEMO1234</span>-class tags are accepted — watch for the odd rejected one.</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(s){ return document.querySelector(s); };
+
+  /* ================= state ================= */
+  var running = true, speed = 1, autoTraffic = true, rawOn = false, autoScroll = true, filter = "all";
+  var simSeconds = 0;                 // accelerated clock (300x)
+  var TIME_SCALE = 300;               // 1 real second = 300 sim seconds
+  var msgCount = 0, carsServed = 0, totalEnergy = 0, txCounter = 0, uidCounter = 0;
+  var queue = 0;                      // cars waiting for a free bay
+  var selectedBay = -1;
+  var nextAutoIn = 6;                 // seconds until next auto car
+  var heartbeatIn = 18;
+
+  var MODELS = [
+    { name:"Nexon.ev",      make:"Tata",    cap:40.5, color:"#3f7fbf", color2:"#2c5d8f" },
+    { name:"ZS EV",         make:"MG",      cap:50.3, color:"#c2453a", color2:"#93322b" },
+    { name:"Kona Electric", make:"Hyundai", cap:39.2, color:"#d8dde2", color2:"#a9b2ba" },
+    { name:"XUV400",        make:"Mahindra",cap:39.4, color:"#3d9e63", color2:"#2c7a4b" },
+    { name:"Tiago.ev",      make:"Tata",    cap:24.2, color:"#e0a83c", color2:"#b9862a" },
+    { name:"Creta Electric",make:"Hyundai", cap:51.4, color:"#5b6470", color2:"#414954" },
+    { name:"Punch.ev",      make:"Tata",    cap:35.0, color:"#7a5fa8", color2:"#5c4784" },
+    { name:"Windsor EV",    make:"MG",      cap:38.0, color:"#2f9e97", color2:"#227a75" }
+  ];
+  var POWERS = [7.4, 7.4, 7.4, 11.0, 3.3];   // kW — mostly 7.4 like the lab wallbox
+  var TAGS = ["DEMO1234","DEMO1234","DEMO1234","RFID88A1","UPIWALLET7","GUEST009"]; // last one gets rejected once in a while
+
+  /* ================= bays ================= */
+  var bayX = [13.5, 38, 62, 86.5];
+  var bays = [];
+  var bayLayer = $("#bayLayer"), carLayer = $("#carLayer"), scene = $("#scene");
+
+  function carSVG(m){
+    return '<svg viewBox="0 0 60 116" aria-hidden="true">' +
+      '<rect x="4" y="6" width="52" height="104" rx="16" fill="'+m.color+'"/>' +
+      '<rect x="9" y="26" width="42" height="20" rx="7" fill="#10151c" opacity=".85"/>' +
+      '<rect x="9" y="66" width="42" height="16" rx="6" fill="#10151c" opacity=".7"/>' +
+      '<rect x="13" y="50" width="34" height="14" rx="5" fill="'+m.color2+'"/>' +
+      '<rect x="7" y="12" width="7" height="5" rx="2" fill="#ffe9a8"/>' +
+      '<rect x="46" y="12" width="7" height="5" rx="2" fill="#ffe9a8"/>' +
+      '<rect x="7" y="99" width="7" height="5" rx="2" fill="#ff7a6b"/>' +
+      '<rect x="46" y="99" width="7" height="5" rx="2" fill="#ff7a6b"/>' +
+      '<rect x="27" y="2" width="6" height="6" rx="3" fill="#0c0f0c"/>' +
+    '</svg>';
+  }
+
+  for (var i=0;i<4;i++){
+    (function(i){
+      var bay = { idx:i, id:"SIM_00"+(i+1), status:"Booting", car:null, txId:null,
+                  meterStart:104520 + i*1731, register:104520 + i*1731, booted:false };
+      var el = document.createElement("div");
+      el.className = "bay"; el.style.left = (bayX[i]-11.5)+"%";
+      el.setAttribute("role","button"); el.setAttribute("tabindex","0");
+      el.setAttribute("aria-label","Inspect charger "+bay.id);
+      el.innerHTML =
+        '<div class="charger"><div class="cp-id mono">'+bay.id+'</div>' +
+        '<div class="screen"><div class="st">Booting…</div><div class="pw mono"></div></div>' +
+        '<div class="ledrow"><span class="led l1"></span><span class="led l2"></span><span class="led l3"></span></div></div>' +
+        '<svg class="cable" viewBox="0 0 60 120"><path d="M6 4 C 30 30, 44 60, 40 104"/><path class="pulse-line" d="M6 4 C 30 30, 44 60, 40 104"/></svg>' +
+        '<div class="bay-no">BAY '+(i+1)+'</div>';
+      el.addEventListener("click", function(){ selectBay(i); });
+      el.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); selectBay(i);} });
+      bayLayer.appendChild(el);
+      bay.el = el;
+      bay.screenSt = el.querySelector(".screen .st");
+      bay.screenPw = el.querySelector(".screen .pw");
+      bay.leds = el.querySelectorAll(".led");
+      bay.cable = el.querySelector(".cable");
+      bays.push(bay);
+    })(i);
+  }
+
+  function setBayStatus(bay, status, pwText){
+    bay.status = status;
+    bay.screenSt.textContent = status;
+    bay.screenPw.textContent = pwText || "";
+    var leds = bay.leds;
+    leds[0].className = "led l1"; leds[1].className = "led l2"; leds[2].className = "led l3";
+    if (status==="Available"){ leds[0].classList.add("green"); }
+    else if (status==="Charging"){ leds[1].classList.add("blue"); }
+    else if (status==="Finishing"){ leds[2].classList.add("amber"); }
+    else { leds[2].classList.add("amber"); }
+    if (selectedBay === bay.idx) renderBayDetail();
+  }
+
+  /* ================= logging ================= */
+  var term = $("#term");
+  function nowStamp(){
+    var d = new Date();
+    function p(n){ return (n<10?"0":"")+n; }
+    return p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds());
+  }
+  function uid(){ uidCounter++; return "msg-"+(1000+uidCounter)+"-lab"; }
+  function addMsg(kind, cpId, action, summary, payload){
+    if (kind === "call" || kind === "resp"){ msgCount++; $("#stMsgs").textContent = msgCount; }
+    var div = document.createElement("div");
+    div.className = "msg "+kind; div.dataset.kind = kind;
+    if (filter !== "all" && kind !== filter && kind !== "summary") div.style.display = "none";
+    var dirLabel = kind==="call" ? "CP → CSMS" : kind==="resp" ? "CSMS → CP" : "CSMS NOTE";
+    var html = '<div class="row1"><span class="t">'+nowStamp()+'</span>' +
+      '<span class="dir '+kind+'">'+dirLabel+'</span>' +
+      '<span class="act">'+action+'</span>' +
+      (cpId ? '<span class="t mono">'+cpId+'</span>' : '') + '</div>' +
+      '<div class="sum">'+summary+'</div>';
+    if (payload){ html += '<pre>'+payload+'</pre>'; div.title = "Click to toggle raw OCPP frame"; }
+    div.innerHTML = html;
+    if (payload){
+      div.addEventListener("click", function(){ div.classList.toggle("open"); });
+    }
+    term.appendChild(div);
+    while (term.children.length > 140) term.removeChild(term.firstChild);
+    if (autoScroll) term.scrollTop = term.scrollHeight;
+    return div;
+  }
+  function frame(type, id, action, obj){
+    if (type === 2) return JSON.stringify([2, id, action, obj], null, 1);
+    return JSON.stringify([3, id, obj], null, 1);
+  }
+  function callMsg(bay, action, summary, obj){
+    var id = uid();
+    addMsg("call", bay.id, action, summary, frame(2, id, action, obj));
+    return id;
+  }
+  function respMsg(bay, action, id, summary, obj){
+    addMsg("resp", bay.id, action+" ✓", summary, frame(3, id, null, obj));
+  }
+  function note(text){ addMsg("note", "", "— "+text, "", null); }
+  function summaryMsg(bay, car, energy, durSimMin, cost){
+    var div = document.createElement("div");
+    div.className = "msg summary"; div.dataset.kind = "note";
+    if (filter !== "all" && filter !== "note") div.style.display = "none";
+    div.innerHTML = '<div class="row1"><span class="t">'+nowStamp()+'</span><span class="dir resp">SESSION SUMMARY</span>' +
+      '<span class="act">tx '+bay.txId+' · '+bay.id+'</span></div>' +
+      '<div class="big">'+car.make+' '+car.model+' — session complete</div>' +
+      '<div class="grid"><span>Energy <b>'+energy.toFixed(2)+' kWh</b></span>' +
+      '<span>Duration <b>'+Math.round(durSimMin)+' min</b> (sim)</span>' +
+      '<span>Rate <b>₹18/kWh</b></span><span>Debited <b>₹'+cost.toFixed(2)+'</b></span>' +
+      '<span>Battery <b>'+Math.round(car.socStart)+'% → '+Math.round(car.soc)+'%</b></span></div>';
+    term.appendChild(div);
+    msgCount++; $("#stMsgs").textContent = msgCount;
+    if (autoScroll) term.scrollTop = term.scrollHeight;
+  }
+
+  /* ================= flow stepper ================= */
+  var flowSteps = {};
+  document.querySelectorAll("#flow .step").forEach(function(s){ flowSteps[s.dataset.step] = s; });
+  var flowOrder = ["boot","auth","start","meter","stop","summary"];
+  function setFlow(step){
+    var idx = flowOrder.indexOf(step);
+    flowOrder.forEach(function(k, i){
+      flowSteps[k].classList.toggle("active", k === step);
+      flowSteps[k].classList.toggle("done", i < idx);
+    });
+  }
+
+  /* ================= cars ================= */
+  var cars = [];
+  function spawnCar(){
+    var free = bays.filter(function(b){ return !b.car && b.booted; });
+    if (!free.length){ queue++; renderQueue(); return; }
+    var bay = free[Math.floor(Math.random()*free.length)];
+    var m = MODELS[Math.floor(Math.random()*MODELS.length)];
+    var power = POWERS[Math.floor(Math.random()*POWERS.length)];
+    var socStart = 18 + Math.random()*30;
+    var car = {
+      bay: bay, model: m.name, make: m.make, cap: m.cap, color: m.color,
+      power: power, socStart: socStart, soc: socStart,
+      socTarget: Math.min(96, socStart + 26 + Math.random()*22),
+      idTag: TAGS[Math.floor(Math.random()*TAGS.length)],
+      phase: "drive_in", t: 0, meterCount: 0, meterTimer: 0,
+      x: -10, y: 84, rot: 90, startSim: simSeconds, rejected: false
+    };
+    car.rejected = (car.idTag === "GUEST009");
+    bay.car = car;
+    var el = document.createElement("div");
+    el.className = "car";
+    el.innerHTML = carSVG(m) +
+      '<div class="hud"><div class="nm">'+m.make+' '+m.name+'</div>' +
+      '<div class="bar"><i style="width:'+socStart+'%"></i></div>' +
+      '<div class="pct mono">'+Math.round(socStart)+'% · '+power.toFixed(1)+' kW</div></div>';
+    carLayer.appendChild(el);
+    car.el = el; car.barEl = el.querySelector(".bar i"); car.pctEl = el.querySelector(".pct");
+    cars.push(car);
+    setBayStatus(bay, "Occupied", "car arriving");
+    addMsg("note", "", "— "+m.make+" "+m.name+" rolled in", "Heading for bay "+(bay.idx+1)+" ("+bay.id+") · battery "+Math.round(socStart)+"% · wants ~"+Math.round(car.socTarget)+"%", null);
+    if (selectedBay === -1) selectBay(bay.idx);
+    placeCar(car);
+  }
+  function placeCar(car){
+    car.el.style.left = car.x + "%";
+    car.el.style.top = car.y + "%";
+    car.el.style.transform = "translate(-50%,-50%) rotate("+car.rot+"deg)";
+  }
+  function lerp(a,b,t){ return a + (b-a)*t; }
+  function ease(t){ return t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+
+  function startMeterPhase(car){ car.phase = "charging"; car.t = 0; car.meterTimer = 1.2; }
+
+  function tickCar(car, dt){
+    var bay = car.bay;
+    car.t += dt;
+    switch(car.phase){
+      case "drive_in": {
+        var p = Math.min(1, car.t/2.3), e = ease(p);
+        car.x = lerp(-10, bayX[bay.idx], e); car.y = 84; car.rot = 90;
+        if (p>=1){ car.phase="parking"; car.t=0; }
+        break;
+      }
+      case "parking": {
+        var p2 = Math.min(1, car.t/1.7), e2 = ease(p2);
+        car.x = bayX[bay.idx]; car.y = lerp(84, 33, e2); car.rot = lerp(90, 0, e2);
+        if (p2>=1){
+          car.phase="boot"; car.t=0;
+          bay.cable.classList.add("on");
+          setBayStatus(bay, "Finishing", "plugged in");
+          setFlow("boot");
+          var id = callMsg(bay, "StatusNotification", "Connector 1 · Preparing — cable plugged in",
+            { connectorId:1, errorCode:"NoError", status:"Preparing" });
+          respMsg(bay, "StatusNotification", id, "Acknowledged", {});
+          car.bootId = callMsg(bay, "BootNotification",
+            "SimWallbox 7.4 · MuseLab · fw 1.0.0 — charger checking in",
+            { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:"1.0.0" });
+        }
+        break;
+      }
+      case "boot": {
+        if (car.t > 0.9){
+          respMsg(bay, "BootNotification", car.bootId, "Accepted · heartbeat every 30 s · server time synced",
+            { currentTime:new Date().toISOString().replace(/\..*/,"Z"), interval:30, status:"Accepted" });
+          setFlow("auth");
+          car.phase = "auth"; car.t = 0;
+          car.authId = callMsg(bay, "Authorize", "RFID tag "+car.idTag+" tapped — may this car charge?",
+            { idTag: car.idTag });
+        }
+        break;
+      }
+      case "auth": {
+        if (car.t > 0.9){
+          if (car.rejected){
+            respMsg(bay, "Authorize", car.authId, "Invalid — tag "+car.idTag+" is not registered. Session refused.",
+              { idTagInfo:{ status:"Invalid" } });
+            note(bay.id+": driver tapped an unregistered tag — no charge started. They'll head out.");
+            setBayStatus(bay, "Available", "");
+            car.phase = "leaving"; car.t = 0;
+            bay.cable.classList.remove("on","flow");
+          } else {
+            respMsg(bay, "Authorize", car.authId, "Accepted — wallet verified, balance OK",
+              { idTagInfo:{ status:"Accepted" } });
+            setFlow("start");
+            txCounter++;
+            bay.txId = txCounter;
+            bay.register = 104520 + Math.floor(Math.random()*900);
+            bay.meterStart = bay.register;
+            car.phase = "start"; car.t = 0;
+            car.startId = callMsg(bay, "StartTransaction",
+              "Connector 1 · tag "+car.idTag+" · meterStart "+bay.meterStart+" Wh — asking to open tx",
+              { connectorId:1, idTag:car.idTag, meterStart:bay.meterStart, timestamp:new Date().toISOString().replace(/\..*/,"Z") });
+          }
+        }
+        break;
+      }
+      case "start": {
+        if (car.t > 0.9){
+          respMsg(bay, "StartTransaction", car.startId, "transactionId "+bay.txId+" allocated · charging started",
+            { transactionId: bay.txId, idTagInfo:{ status:"Accepted" } });
+          setFlow("meter");
+          setBayStatus(bay, "Charging", car.power.toFixed(1)+" kW");
+          bay.cable.classList.add("flow");
+          startMeterPhase(car);
+        }
+        break;
+      }
+      case "charging": {
+        car.meterTimer -= dt;
+        var ratePerSec = car.power * (TIME_SCALE/3600) / car.cap * 100; // % SoC per real second
+        car.soc = Math.min(car.socTarget, car.soc + ratePerSec * dt);
+        bay.register = bay.meterStart + (car.soc - car.socStart)/100 * car.cap * 1000;
+        car.barEl.style.width = car.soc + "%";
+        car.pctEl.textContent = Math.round(car.soc) + "% · " + car.power.toFixed(1) + " kW";
+        if (selectedBay === bay.idx) renderBayDetail();
+        if (car.meterTimer <= 0){
+          car.meterTimer = 2.0;
+          car.meterCount++;
+          var delivered = (bay.register - bay.meterStart)/1000;
+          totalEnergy += 0; // energy counted continuously below via register delta in stats tick
+          var amps = (car.power*1000/230).toFixed(1);
+          var mid = callMsg(bay, "MeterValues",
+            "tx "+bay.txId+" · register "+bay.register.toFixed(1)+" Wh · "+Math.round(car.power*1000)+" W · "+amps+" A · 230 V → "+delivered.toFixed(2)+" kWh so far",
+            { connectorId:1, transactionId:bay.txId, meterValue:[{ timestamp:new Date().toISOString().replace(/\..*/,"Z"),
+              sampledValue:[
+                { value: bay.register.toFixed(1), measurand:"Energy.Active.Import.Register", unit:"Wh" },
+                { value: String(Math.round(car.power*1000)), measurand:"Power.Active.Import", unit:"W" },
+                { value: amps, measurand:"Current.Import", unit:"A" },
+                { value:"230", measurand:"Voltage", unit:"V" },
+                { value: car.soc.toFixed(1), measurand:"SoC", unit:"Percent" }
+              ]}]});
+          respMsg(bay, "MeterValues", mid, "Sample stored", {});
+          updateStats();
+        }
+        if (car.soc >= car.socTarget){
+          setFlow("stop");
+          car.phase = "stop"; car.t = 0;
+          bay.cable.classList.remove("flow");
+          setBayStatus(bay, "Finishing", "wrapping up");
+          car.stopId = callMsg(bay, "StopTransaction",
+            "Target reached · meterStop "+Math.round(bay.register)+" Wh · tx "+bay.txId,
+            { meterStop: Math.round(bay.register), timestamp:new Date().toISOString().replace(/\..*/,"Z"), transactionId: bay.txId, reason:"EVDisconnected" });
+        }
+        break;
+      }
+      case "stop": {
+        if (car.t > 1.0){
+          var energy = (bay.register - bay.meterStart)/1000;
+          var cost = energy * 18;
+          var durMin = (simSeconds - car.startSim)/60;
+          respMsg(bay, "StopTransaction", car.stopId, "Accepted · session closed · wallet debited ₹"+cost.toFixed(2),
+            { idTagInfo:{ status:"Accepted" } });
+          summaryMsg(bay, car, energy, durMin, cost);
+          setFlow("summary");
+          carsServed++; updateStats();
+          var sid = callMsg(bay, "StatusNotification", "Connector 1 · Available — ready for the next car",
+            { connectorId:1, errorCode:"NoError", status:"Available" });
+          respMsg(bay, "StatusNotification", sid, "Acknowledged", {});
+          bay.cable.classList.remove("on");
+          setBayStatus(bay, "Available", "");
+          car.phase = "leaving"; car.t = 0;
+        }
+        break;
+      }
+      case "leaving": {
+        var p3 = Math.min(1, car.t/1.6), e3 = ease(p3);
+        if (car.y > 40 || p3 < 1){
+          car.x = bayX[bay.idx]; car.y = lerp(33, 84, e3); car.rot = lerp(0, 90, e3);
+        }
+        if (p3 >= 1){ car.phase = "drive_out"; car.t = 0; }
+        break;
+      }
+      case "drive_out": {
+        var p4 = Math.min(1, car.t/2.1), e4 = ease(p4);
+        car.x = lerp(bayX[bay.idx], 112, e4); car.y = 84; car.rot = 90;
+        if (p4 >= 1){
+          car.phase = "gone";
+          car.el.remove();
+          bay.car = null;
+          if (queue > 0){ queue--; renderQueue(); setTimeout(function(){ if(running) spawnCar(); }, 350); }
+        }
+        break;
+      }
+    }
+    if (car.phase !== "gone") placeCar(car);
+  }
+
+  function renderQueue(){
+    var chip = $("#queueChip");
+    if (queue > 0){ chip.textContent = "⏳ "+queue+" car"+(queue>1?"s":"")+" waiting for a free bay"; chip.classList.add("show"); }
+    else chip.classList.remove("show");
+  }
+
+  /* ================= stats ================= */
+  function fleetEnergy(){
+    var live = 0;
+    bays.forEach(function(b){ if (b.car && (b.car.phase==="charging"||b.car.phase==="stop")) live += (b.register - b.meterStart)/1000; });
+    return live;
+  }
+  var bankedEnergy = 0, lastLive = 0;
+  function updateStats(){
+    var live = fleetEnergy();
+    if (live < lastLive) bankedEnergy += lastLive; // a session banked its energy
+    lastLive = live;
+    var total = bankedEnergy + live;
+    var active = bays.filter(function(b){ return b.car && b.car.phase==="charging"; }).length;
+    var occupied = bays.filter(function(b){ return !!b.car; }).length;
+    $("#stEnergy").innerHTML = total.toFixed(2) + " <small>kWh</small>";
+    $("#stRevenue").textContent = "₹" + (total*18).toFixed(2);
+    $("#stActive").innerHTML = active + " <small>/ 4 bays</small>";
+    $("#stActiveD").textContent = occupied === 0 ? "All chargers idle" : occupied + " bay"+(occupied>1?"s":"")+" occupied · "+active+" charging now";
+    $("#stCars").textContent = carsServed;
+    $("#stCarsD").textContent = carsServed === 1 ? "Session completed" : "Sessions completed";
+  }
+
+  /* ================= bay detail ================= */
+  function selectBay(i){
+    selectedBay = i;
+    bays.forEach(function(b, j){ b.el.classList.toggle("selected", j===i); });
+    renderBayDetail();
+  }
+  function renderBayDetail(){
+    if (selectedBay < 0) return;
+    var b = bays[selectedBay], d = $("#bayDetail");
+    if (!b.car){
+      d.innerHTML = "<strong>"+b.id+" · Bay "+(b.idx+1)+"</strong> — "+b.status+". SimWallbox 7.4 · Type 2 connector free, meter at "+Math.round(b.register)+" Wh. Waiting for the next car.";
+      return;
+    }
+    var c = b.car;
+    var phaseName = { drive_in:"driving in", parking:"parking & plugging in", boot:"booting / handshaking", auth:"authorising RFID",
+      start:"starting transaction", charging:"charging", stop:"closing session", leaving:"unplugging", drive_out:"driving out" }[c.phase] || c.phase;
+    var extra = "";
+    if (c.phase === "charging" || c.phase === "stop"){
+      extra = " · tx "+b.txId+" · "+((b.register-b.meterStart)/1000).toFixed(2)+" kWh delivered · ₹"+(((b.register-b.meterStart)/1000)*18).toFixed(2)+" so far";
+    }
+    d.innerHTML = "<strong>"+b.id+" · Bay "+(b.idx+1)+"</strong> — "+c.make+" "+c.model+" is "+phaseName+
+      " · battery "+Math.round(c.soc)+"% of "+c.cap+" kWh · "+c.power.toFixed(1)+" kW · tag "+c.idTag+extra+".";
+  }
+
+  /* ================= boot sequence ================= */
+  var bootLine = document.createElement("div");
+  bootLine.className = "boot-line";
+  bootLine.textContent = "$ python csms_server.py — listening on ws://localhost:9000/<charge_point_id> (OCPP 1.6J)";
+  term.appendChild(bootLine);
+  bays.forEach(function(bay, i){
+    setTimeout(function(){
+      if (!running && simSeconds > 0) { /* still boot */ }
+      bay.booted = true;
+      var id = callMsg(bay, "BootNotification", "SimWallbox 7.4 · MuseLab · fw 1.0.0 — charger powered on",
+        { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:"1.0.0" });
+      respMsg(bay, "BootNotification", id, "Accepted · heartbeat every 30 s",
+        { currentTime:new Date().toISOString().replace(/\..*/,"Z"), interval:30, status:"Accepted" });
+      setBayStatus(bay, "Available", "");
+      note(bay.id+" connected from 127.0.0.1 — bay "+(bay.idx+1)+" ready");
+      if (i === 3){ setFlow("boot"); }
+    }, 600 + i*900);
+  });
+  setTimeout(function(){ spawnCar(); }, 2600);
+  setTimeout(function(){ spawnCar(); }, 6800);
+
+  /* ================= main loop ================= */
+  var last = performance.now();
+  setInterval(function(){
+    var now = performance.now();
+    var rawDt = Math.min(0.12, (now - last)/1000); last = now;
+    if (!running) return;
+    var dt = rawDt * speed;
+    simSeconds += dt * TIME_SCALE;
+    // clock chip
+    var hh = Math.floor(simSeconds/3600)%24, mm = Math.floor(simSeconds/60)%60;
+    $("#simClock").textContent = "SIM " + (hh<10?"0":"")+hh + ":" + (mm<10?"0":"")+mm + " · 300× time";
+    for (var i = cars.length-1; i >= 0; i--){
+      tickCar(cars[i], dt);
+      if (cars[i].phase === "gone") cars.splice(i,1);
+    }
+    // continuous energy accounting
+    updateStats();
+    // auto traffic
+    if (autoTraffic){
+      nextAutoIn -= dt;
+      if (nextAutoIn <= 0){ nextAutoIn = 9 + Math.random()*10; spawnCar(); }
+    }
+    // heartbeats from an idle booted charger
+    heartbeatIn -= dt;
+    if (heartbeatIn <= 0){
+      heartbeatIn = 16 + Math.random()*10;
+      var booted = bays.filter(function(b){ return b.booted && !b.car; });
+      if (booted.length){
+        var hb = booted[Math.floor(Math.random()*booted.length)];
+        var hid = callMsg(hb, "Heartbeat", "Still alive — no session running", {});
+        respMsg(hb, "Heartbeat", hid, "Clock synced", { currentTime:new Date().toISOString().replace(/\..*/,"Z") });
+      }
+    }
+  }, 50);
+
+  /* ================= controls ================= */
+  var btnRun = $("#btnRun");
+  btnRun.addEventListener("click", function(){
+    running = !running;
+    btnRun.textContent = running ? "❚❚ Pause" : "▶ Run";
+    btnRun.setAttribute("aria-pressed", running ? "true" : "false");
+    $("#liveLabel").textContent = running ? "CSMS listening · ws://localhost:9000" : "Simulation paused";
+    $("#liveDot").classList.toggle("pulse", running);
+  });
+  $("#btnAdd").addEventListener("click", function(){ spawnCar(); });
+  document.querySelectorAll("[data-speed]").forEach(function(b){
+    b.addEventListener("click", function(){
+      speed = parseFloat(b.dataset.speed);
+      document.querySelectorAll("[data-speed]").forEach(function(x){ x.setAttribute("aria-pressed", x===b ? "true":"false"); });
+    });
+  });
+  var btnAuto = $("#btnAuto");
+  btnAuto.addEventListener("click", function(){
+    autoTraffic = !autoTraffic;
+    btnAuto.textContent = "Auto traffic: " + (autoTraffic ? "On" : "Off");
+    btnAuto.setAttribute("aria-pressed", autoTraffic ? "true" : "false");
+    if (autoTraffic) nextAutoIn = Math.min(nextAutoIn, 2);
+  });
+  document.querySelectorAll("[data-filter]").forEach(function(b){
+    b.addEventListener("click", function(){
+      filter = b.dataset.filter;
+      document.querySelectorAll("[data-filter]").forEach(function(x){ x.setAttribute("aria-pressed", x===b ? "true":"false"); });
+      term.querySelectorAll(".msg").forEach(function(m){
+        var k = m.dataset.kind;
+        m.style.display = (filter==="all" || k===filter || (filter==="note" && m.classList.contains("summary"))) ? "" : "none";
+      });
+      if (autoScroll) term.scrollTop = term.scrollHeight;
+    });
+  });
+  $("#btnRaw").addEventListener("click", function(){
+    rawOn = !rawOn;
+    document.body.classList.toggle("raw-on", rawOn);
+    this.setAttribute("aria-pressed", rawOn ? "true" : "false");
+    if (autoScroll) term.scrollTop = term.scrollHeight;
+  });
+  $("#btnScroll").addEventListener("click", function(){
+    autoScroll = !autoScroll;
+    this.setAttribute("aria-pressed", autoScroll ? "true" : "false");
+    if (autoScroll) term.scrollTop = term.scrollHeight;
+  });
+  $("#btnClear").addEventListener("click", function(){
+    term.querySelectorAll(".msg").forEach(function(m){ m.remove(); });
+    note("Log cleared — feed continues");
+  });
+
+  updateStats();
+})();
+</script>
+</body>
+</html>
