@@ -54,6 +54,7 @@
   .panel .stat b { color: #63b3a6; font-size: 15.5px; font-weight: 600; }
   .wallets { font-size: 12.5px; color: #8496ab; margin-top: 10px; line-height: 1.95; }
   .wallets b { color: #63b3a6; font-weight: 500; }
+  .wallets .who { color: #a9b8c9; }
   .tf-top { display: flex; justify-content: space-between; font-size: 12.5px;
             color: #8496ab; margin: 10px 0 5px; }
   .tf-top b { color: #c7d2de; font-weight: 500; }
@@ -70,6 +71,8 @@
   .st.Preparing { color: #cfa964; } .st.Finishing { color: #a79bc4; }
   .st.Offline, .st.Unavailable { color: #66788e; } .st.Faulted { color: #c48383; }
   .st.Reserved { color: #a79bc4; }
+  #queuerow { font-size: 12.5px; color: #a9b8c9; margin-top: 10px; line-height: 1.6; }
+  #queuerow .qlbl { color: #66788e; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; }
   #payments .pay { font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid #131c2a;
                    color: #a9b8c9; line-height: 1.5; }
   #payments .pay b { color: #d3ba7f; font-weight: 600; }
@@ -77,9 +80,9 @@
   #payments .none { font-size: 12.5px; color: #5d6f85; line-height: 1.55; }
 
   /* ---------- animated society map (calm diorama) ---------- */
-  #scene { position: relative; height: 480px; border: 1px solid #1b2534; border-radius: 10px;
+  #scene { position: relative; height: 620px; border: 1px solid #1b2534; border-radius: 10px;
            background: #0c1220; overflow: hidden; }
-  #building { position: absolute; left: 2%; top: 4%; width: 23%; height: 33%;
+  #building { position: absolute; left: 2%; top: 3%; width: 23%; height: 27%;
               background: #101a29; border: 1px solid #1b2534; border-radius: 8px; padding: 9px; }
   #building .solargrid { height: 46%; border-radius: 4px;
               background:
@@ -89,7 +92,7 @@
   #building .bld-name { font-size: 12.5px; font-weight: 600; margin-top: 8px; color: #c7d2de; }
   #building .bld-solar { font-size: 12px; color: #cfa964; margin-top: 2px; }
   #building .bld-solar .dim { color: #5d6f85; font-size: 11px; }
-  .infobox { position: absolute; top: 4%; width: 24%; background: #101a29;
+  .infobox { position: absolute; top: 3%; width: 24%; background: #101a29;
              border: 1px solid #1b2534; border-radius: 8px; padding: 10px 13px; }
   #dlm { left: 38%; }
   #xfmr { right: 2%; width: 23%; }
@@ -102,10 +105,12 @@
                       transition: width .6s, background .6s; }
   .infobox .dlmfill.amber { background: #cfa964; }
   .infobox .dlmfill.red { background: #c48383; }
-  #busline { position: absolute; left: 2%; right: 2%; top: 40.5%; height: 1px; background: #1d2837; }
-  #slots { position: absolute; left: 2%; right: 2%; top: 42%; height: 40%; display: flex; gap: 10px; }
+  #busline { position: absolute; left: 2%; right: 2%; top: 32.5%; height: 1px; background: #1d2837; }
+  .rowlbl { position: absolute; left: 2%; font-size: 10.5px; text-transform: uppercase;
+            letter-spacing: .09em; color: #55677e; }
+  #evslots { position: absolute; left: 2%; right: 2%; top: 34%; height: 31%; display: flex; gap: 10px; }
   .slot { flex: 1; border-left: 1px dashed #1f2c40; border-right: 1px dashed #1f2c40;
-          display: flex; flex-direction: column; align-items: center; padding-top: 5px; }
+          display: flex; flex-direction: column; align-items: center; padding-top: 5px; cursor: pointer; }
   .slot .ped { width: 30px; height: 22px; border-radius: 4px; background: #141e2c;
                border: 1px solid #263449; color: #66788e; font-size: 12px;
                display: flex; align-items: center; justify-content: center; }
@@ -119,26 +124,40 @@
   .slotstatus.Preparing { color: #cfa964; } .slotstatus.Finishing { color: #a79bc4; }
   .slotstatus.Offline, .slotstatus.Unavailable { color: #5d6f85; }
   .slotstatus.Faulted { color: #c48383; } .slotstatus.Reserved { color: #a79bc4; }
-  .car2 { position: absolute; width: 58px; height: 86px; margin-left: -29px;
-          transition: left 1.6s ease, top 1.6s ease, opacity .9s ease; pointer-events: none; }
-  .carbody { width: 100%; height: 100%; border-radius: 15px; border: 1.5px solid #45536a;
+  #parkslots { position: absolute; left: 2%; right: 2%; top: 69%; height: 17%; display: flex; gap: 6px; }
+  .pspot { flex: 1; border: 1px dashed #1a2636; border-bottom: none; border-radius: 5px 5px 0 0;
+           display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+           padding-bottom: 4px; }
+  .pspot .plbl { font-size: 10.5px; color: #4d5d72; }
+  .car2 { position: absolute; width: 52px; height: 76px; margin-left: -26px;
+          transition: left 1.6s ease, top 1.6s ease, opacity .9s ease; z-index: 5; }
+  .car2.clickable { cursor: pointer; }
+  .carbody { width: 100%; height: 58px; border-radius: 14px; border: 1.5px solid #45536a;
              position: relative; }
-  .carbody:before { content: ""; position: absolute; left: 7px; right: 7px; top: 13px; height: 16px;
+  .carbody:before { content: ""; position: absolute; left: 6px; right: 6px; top: 11px; height: 14px;
                     border-radius: 5px; background: #a8c8dd; opacity: .30; }
-  .carbody:after { content: ""; position: absolute; left: 9px; right: 9px; bottom: 10px; height: 11px;
+  .carbody:after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 8px; height: 10px;
                    border-radius: 5px; background: #a8c8dd; opacity: .18; }
   .car2.charging .carbody { border-color: #63b3a6; }
-  .cable2 { position: absolute; width: 2px; margin-left: -1px; top: 42%; height: 3.4%;
-            background: #63b3a6;
+  .car2 .carlbl { margin-top: 3px; text-align: center; font-size: 10.5px; color: #a9b8c9;
+                  font-weight: 500; white-space: nowrap; }
+  .car2 .socmini { height: 4px; background: #1a2434; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+  .car2 .socfill { height: 100%; width: 0%; background: #4f9689; transition: width .6s; }
+  .car2 .qbadge { position: absolute; top: -7px; right: -7px; min-width: 19px; height: 19px;
+                  border-radius: 10px; background: #6b5836; color: #f0e2c4; font-size: 10.5px;
+                  font-weight: 600; display: none; align-items: center; justify-content: center;
+                  padding: 0 4px; border: 1px solid #8a744a; }
+  .car2.waiting .qbadge { display: flex; }
+  .cable2 { position: absolute; width: 2px; margin-left: -1px; top: 35%; height: 3.2%;
+            background: #63b3a6; z-index: 4;
             opacity: 0; transition: opacity .5s; pointer-events: none; }
-  #road { position: absolute; left: 0; right: 0; bottom: 0; height: 11%;
+  #road { position: absolute; left: 0; right: 0; bottom: 0; height: 8.5%;
           background: #0a0f18; border-top: 1px solid #1b2534; display: flex;
           justify-content: space-between; align-items: center; padding: 0 16px;
           font-size: 11.5px; color: #5d6f85; letter-spacing: .05em; }
 
   /* ---------- bay cards ---------- */
-  .bays { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  @media (max-width: 1250px) { .bays { grid-template-columns: repeat(2, 1fr); } }
+  .bays { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
   @media (max-width: 760px) { .bays { grid-template-columns: 1fr; } }
   .bay { border: 1px solid #1b2534; border-radius: 10px; padding: 16px 18px; background: #0f1622; }
   .bay .top { display: flex; justify-content: space-between; align-items: center; }
@@ -184,9 +203,11 @@
     <span id="bandPill" class="pill band">— · ₹—/kWh</span>
     <span id="clock">—</span>
   </div>
-  <div class="sub">Six charging bays in one housing society, running on the <b>real</b> OCPP 1.6J
-    server — every car below runs a genuine protocol session and is billed by the server with
-    time-of-day pricing. Play the traffic and watch a day roll by.</div>
+  <div class="sub">One housing society, <b>ten EV-owning residents</b> and <b>four shared
+    charging bays</b> — any car can use any bay. Cars drive in, charge if a bay is free,
+    or park in normal parking and wait their turn. Everything runs on the <b>real</b>
+    OCPP 1.6J server: each session is authorized against the car owner's own wallet
+    and billed by the server with time-of-day pricing.</div>
   <div class="controls">
     <span class="lbl">Traffic</span>
     <button class="primary" id="btnTraffic">▶ Play traffic</button>
@@ -196,7 +217,7 @@
     <button class="spdbtn" id="spd10">10×</button>
     <button class="spdbtn" id="spd30">30×</button>
     <button class="warn" id="btnReset">Reset day</button>
-    <span class="lbl" id="simNote">simulation clock = real time · speed compresses time for chargers too</span>
+    <span class="lbl" id="simNote">the world lives on the server — everyone watching sees the same cars</span>
   </div>
 </header>
 
@@ -229,13 +250,16 @@
           <div class="s" id="xfBand">— · ₹—/kWh</div>
         </div>
         <div id="busline"></div>
-        <div id="slots"></div>
+        <div class="rowlbl" style="top:32.8%">Charging bays — shared</div>
+        <div id="evslots"></div>
+        <div class="rowlbl" style="top:66.8%">Normal parking — cars wait here for a free bay</div>
+        <div id="parkslots"></div>
         <div id="cars"></div>
-        <div id="road"><span>◀ GATE IN</span><span>visitor parking</span><span>TO TOWERS ▶</span></div>
+        <div id="road"><span>◀ GATE IN</span><span>10 residents · 4 shared bays</span><span>TO TOWERS ▶</span></div>
       </div>
     </section>
     <section>
-      <h2>Charging bays — drive one yourself</h2>
+      <h2>Charging bays — shared, drive one yourself</h2>
       <div class="bays" id="bays"></div>
     </section>
     <section>
@@ -256,8 +280,9 @@
       <div class="tf-note">30 kWp rooftop curve over the simulation clock — not metered</div>
     </section>
     <section class="panel">
-      <h2>Bays</h2>
+      <h2>Bays &amp; queue</h2>
       <div id="bayrows"></div>
+      <div id="queuerow"><span class="qlbl">Queue</span> · <span id="queuelist">empty</span></div>
     </section>
     <section class="panel">
       <h2>Ledger — billed by the server</h2>
@@ -274,40 +299,38 @@
 </main>
 
 <p class="note">
-  Each bay is a real OCPP 1.6J charge point running in this page: it boots, authorizes the
-  resident's RFID tag against their server-side wallet, starts a transaction, streams meter
-  values stamped with the simulation clock, and stops — the Python CSMS prices every interval
-  by the tariff band in force at its timestamp and debits the wallet. Traffic mode simply
-  drives the same bays automatically. A real charger pointed at this server would be billed
-  identically. Tags DEMO1234 / AYUSH001 / PRIYA002 / RAHUL003 / MEERA004 / ARJUN005 hold
-  wallets on the server; unknown tags are rejected. “Reset day” restarts the page-side clock
-  and tallies; server wallets persist.
+  The bays are <b>shared</b>: the server keeps a pool of ten residents, each with their own
+  wallet, and any car can plug into any of the four bays. A bay's charge point lives on the
+  server and speaks genuine OCPP 1.6J to the CSMS over a loopback socket — it boots,
+  authorizes the car owner's RFID tag against their wallet, starts a transaction, streams
+  meter values stamped with the simulation clock, and stops; the CSMS prices every interval
+  by the tariff band in force at its timestamp and debits that resident's wallet. If all
+  bays are busy, arriving cars park in normal parking and queue; when a session ends, the
+  longest-waiting car takes the freed bay. The world — cars, queue, sessions, wallets —
+  lives on the server, so everyone opening this page shares one world, and rejoining
+  mid-session restores it exactly. A real charger pointed at this server would be billed
+  identically. “Reset day” sends the cars home and clears the ledger; wallets persist.
 </p>
 
 <script>
 "use strict";
 /* =====================================================================
    Simplecharge — Society Simulator, live on the real OCPP server.
-   Six bays, each a REAL OCPP 1.6J charge-point client in JavaScript
-   (genuine [2,id,"Action",{...}] frames over its own WebSocket to the
-   Python CSMS). The animated map, the log, the ledger and the payments
-   are all fed by the CSMS /observe socket — exact wire strings plus
-   server-computed summaries. The page adds a simulation clock and a
-   traffic engine on top: at speed, the clock, the solar curve, the
-   meter timestamps AND the delivered energy all compress together, so
-   the server's time-of-use pricing bills accelerated sessions in the
-   bands they actually ran in.
+   SHARED-BAY MODEL: the server keeps a pool of ten residents (each with
+   their own wallet) and four shared bays. The whole world — cars,
+   parking, queue, sessions — lives on the server; this page is a pure
+   observer + remote control. It renders the server's {"event":"world"}
+   snapshots and /observe feed, and steers the world with Sim* control
+   messages. Rejoining any time restores the exact shared world.
    ===================================================================== */
 
 var HOST = location.hostname || "localhost";
 var WS_BASE = (location.protocol === "https:" ? "wss://" : "ws://") + HOST + ":9001";
-var BATTERY_KWH = 40.0;
-var BASE_POWER_W = 7400.0;
-var VOLTAGE_V = 230.0;
-var METER_MS = 500;
+var BAY_IDS = ["BAY-01", "BAY-02", "BAY-03", "BAY-04"];
+var PARKING_SPOTS = 10;
 
-/* Time-of-use tariff — page mirror of the CSMS bands (display + running
-   estimates only; the server does the authoritative billing). */
+/* Time-of-use tariff — page mirror of the CSMS bands (display only;
+   the server does the authoritative billing). */
 var BANDS = {
   night:    { label: "Night",        rate: 10 },
   solar:    { label: "Solar hours",  rate: 12 },
@@ -321,55 +344,38 @@ function bandForHour(h) {
   return "standard";
 }
 
-/* bay id -> resident (flat + name shown on the map/card + the RFID tag
-   the server checks against its wallet table) */
-var BAYS = [
-  { id: "BAY-01", flat: "B-1202", resident: "Meera", tag: "MEERA004", color: "#71808f" },
-  { id: "BAY-02", flat: "A-302",  resident: "Ayush", tag: "AYUSH001", color: "#7d8a99" },
-  { id: "BAY-03", flat: "C-1801", resident: "Priya", tag: "PRIYA002", color: "#6f8579" },
-  { id: "BAY-04", flat: "A-503",  resident: "Rahul", tag: "RAHUL003", color: "#8a7f6d" },
-  { id: "BAY-05", flat: "D-904",  resident: "Arjun", tag: "ARJUN005", color: "#83748a" },
-  { id: "BAY-06", flat: "B-707",  resident: "Demo",  tag: "DEMO1234", color: "#66707e" }
-];
-
 function esc(s) {
   return String(s).replace(/[&<>"']/g, function (c) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
   });
 }
-function rand(min, max) { return min + Math.random() * (max - min); }
 function pad2(n) { return (n < 10 ? "0" : "") + n; }
 
-/* ---------------- simulation clock ----------------
-   Starts at the current real time and advances at SIM.speed. Drives the
-   header clock, the tariff band, the solar curve and every timestamp
-   the charge points send — so time-of-use pricing follows sim time. */
-var SIM = { speed: 1, playing: false, nowMs: Date.now(), nextArrivalMs: 0 };
-function simDate() { return new Date(SIM.nowMs); }
-function isoSim() {
-  var d = simDate();
-  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) +
-         "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" +
-         pad2(d.getSeconds()) + "Z";
+/* ---------------- simulation clock (server-owned; the page
+   interpolates between the server's clock broadcasts) ---------------- */
+var clockBase = { nowMs: Date.now(), realMs: Date.now(), speed: 1, playing: false };
+function simNowMs() {
+  return clockBase.nowMs + (Date.now() - clockBase.realMs) * clockBase.speed;
 }
+function simDate() { return new Date(simNowMs()); }
 function simClockText() {
   var d = simDate();
   return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
 }
-function simBand() { return bandForHour(simDate().getHours()); }
-
-var lastRealTick = Date.now();
-function simTick() {
-  var nowReal = Date.now();
-  var dt = nowReal - lastRealTick;
-  lastRealTick = nowReal;
-  if (dt > 0) SIM.nowMs += dt * SIM.speed;
+function rebaseClock(nowMs, speed, playing) {
+  if (typeof nowMs === "number") clockBase.nowMs = nowMs;
+  if (typeof speed === "number") clockBase.speed = speed;
+  if (typeof playing === "boolean") clockBase.playing = playing;
+  clockBase.realMs = Date.now();
+  renderControls();
+}
+function clockTick() {
   var d = simDate();
   var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   document.getElementById("clock").textContent =
     "SIM " + days[d.getDay()] + " " + simClockText() +
-    (SIM.speed !== 1 ? " · " + SIM.speed + "×" : "");
-  var bk = simBand(), band = BANDS[bk];
+    (clockBase.speed !== 1 ? " · " + clockBase.speed + "×" : "");
+  var bk = bandForHour(d.getHours()), band = BANDS[bk];
   document.getElementById("bandPill").textContent =
     band.label + " · ₹" + band.rate + "/kWh";
   document.getElementById("xfBand").textContent =
@@ -377,7 +383,6 @@ function simTick() {
   ["night", "solar", "standard", "peak"].forEach(function (k) {
     document.getElementById("tb-" + k).className = "tb" + (k === bk ? " on" : "");
   });
-  trafficTick();
   renderPower();
 }
 
@@ -451,48 +456,307 @@ function describeFrame(msg) {
   return null;
 }
 
-/* ---------------- ledger + payments (server numbers only) ---------------- */
-var totals = { kwh: 0, revenue: 0, sessions: 0 };
-var payments = [];
-var lastSummary = null;
-function renderTotals() {
-  document.getElementById("tKwh").textContent = totals.kwh.toFixed(3) + " kWh";
-  document.getElementById("tRev").textContent = "₹" + totals.revenue.toFixed(2);
-  document.getElementById("tSess").textContent = String(totals.sessions);
+/* ---------------- world state (server-owned) ---------------- */
+var world = null;
+var residentsByTag = {};
+var balances = {};
+var powerByCp = {};
+
+function residentLabel(tag) {
+  var r = residentsByTag[tag];
+  return r ? r.name + " (" + r.flat + ")" : tag;
 }
-function renderWallets(wallets) {
+
+/* ---------------- scene: slots, parking spots, cars ---------------- */
+function bayCentrePct(idx) { return 14 + 24 * idx; }        // of scene width
+function spotCentrePct(idx) { return 6.8 + 9.6 * idx; }
+
+var slotRefs = {};   // bayId -> {ped, barFill, statusEl}
+BAY_IDS.forEach(function (bayId, idx) {
+  var slots = document.getElementById("evslots");
+  var slot = document.createElement("div");
+  slot.className = "slot";
+  slot.title = "Click: bring in a car / stop the session";
+  var ped = document.createElement("div");
+  ped.className = "ped";
+  ped.textContent = "⚡";
+  var spacer = document.createElement("div");
+  spacer.className = "spacer";
+  var bar = document.createElement("div");
+  bar.className = "slotbar";
+  var barFill = document.createElement("div");
+  barFill.className = "slotfill";
+  bar.appendChild(barFill);
+  var lbl = document.createElement("div");
+  lbl.className = "slotflat";
+  lbl.textContent = bayId + " · shared";
+  var status = document.createElement("div");
+  status.className = "slotstatus Offline";
+  status.textContent = "Offline";
+  slot.appendChild(ped);
+  slot.appendChild(spacer);
+  slot.appendChild(bar);
+  slot.appendChild(lbl);
+  slot.appendChild(status);
+  slots.appendChild(slot);
+  slot.addEventListener("click", function () { bayClicked(bayId); });
+
+  var cars = document.getElementById("cars");
+  var cable = document.createElement("div");
+  cable.className = "cable2";
+  cable.style.left = bayCentrePct(idx) + "%";
+  cars.appendChild(cable);
+  slotRefs[bayId] = { ped: ped, barFill: barFill, statusEl: status, cableEl: cable };
+});
+
+for (var pi = 0; pi < PARKING_SPOTS; pi++) {
+  var pwrap = document.getElementById("parkslots");
+  var pspot = document.createElement("div");
+  pspot.className = "pspot";
+  var plbl = document.createElement("div");
+  plbl.className = "plbl";
+  plbl.textContent = "P" + (pi + 1);
+  pspot.appendChild(plbl);
+  pwrap.appendChild(pspot);
+}
+
+var carEls = {};     // tag -> {wrap, body, lbl, socFill, qBadge}
+function buildCar(resident) {
+  var cars = document.getElementById("cars");
+  var wrap = document.createElement("div");
+  wrap.className = "car2";
+  wrap.style.left = "-12%";
+  wrap.style.top = "88%";
+  wrap.style.opacity = "0";
+  var body = document.createElement("div");
+  body.className = "carbody";
+  body.style.background = resident.color;
+  var q = document.createElement("div");
+  q.className = "qbadge";
+  var lbl = document.createElement("div");
+  lbl.className = "carlbl";
+  lbl.textContent = resident.flat;
+  var soc = document.createElement("div");
+  soc.className = "socmini";
+  var socFill = document.createElement("div");
+  socFill.className = "socfill";
+  soc.appendChild(socFill);
+  wrap.appendChild(body);
+  wrap.appendChild(q);
+  wrap.appendChild(lbl);
+  wrap.appendChild(soc);
+  wrap.addEventListener("click", function () {
+    var car = carByTag(resident.tag);
+    if (car && car.state === "charging" && car.bay) sendControl({ control: "SimUnplug", cpId: car.bay });
+  });
+  cars.appendChild(wrap);
+  carEls[resident.tag] = { wrap: wrap, body: body, qBadge: q, socFill: socFill };
+}
+function carByTag(tag) {
+  if (!world) return null;
+  for (var i = 0; i < world.cars.length; i++) {
+    if (world.cars[i].tag === tag) return world.cars[i];
+  }
+  return null;
+}
+function renderCars() {
+  if (!world) return;
+  world.cars.forEach(function (car) {
+    var el = carEls[car.tag];
+    if (!el) return;
+    var wrap = el.wrap;
+    if (car.state === "away") {
+      wrap.style.left = "-12%";
+      wrap.style.top = "88%";
+      wrap.style.opacity = "0";
+      wrap.className = "car2";
+      return;
+    }
+    wrap.style.opacity = "1";
+    if (car.state === "charging" && car.bay) {
+      var idx = BAY_IDS.indexOf(car.bay);
+      wrap.style.left = bayCentrePct(idx) + "%";
+      wrap.style.top = "43%";
+      wrap.className = "car2 charging clickable";
+    } else if (car.spot !== null && car.spot !== undefined) {
+      wrap.style.left = spotCentrePct(car.spot) + "%";
+      wrap.style.top = "71.5%";
+      wrap.className = "car2" + (car.state === "waiting" ? " waiting" : "");
+    }
+    el.socFill.style.width = Math.max(0, Math.min(100, car.soc)).toFixed(0) + "%";
+    el.socFill.style.background = car.state === "charging" ? "#4f9689" : "#5d7186";
+    if (car.state === "waiting" && car.queuePos) {
+      el.qBadge.textContent = "Q" + car.queuePos;
+    }
+  });
+  // cables + slot bars/status from bay state
+  world.bays.forEach(function (bay, idx) {
+    var refs = slotRefs[bay.cpId];
+    if (!refs) return;
+    var charging = bay.status === "Charging";
+    refs.cableEl.style.opacity = charging ? "1" : "0";
+    refs.ped.className = "ped" + (charging || bay.status === "Preparing" ? " on" : "");
+    refs.statusEl.className = "slotstatus " + bay.status;
+    refs.statusEl.textContent = bay.car
+      ? bay.status + " · " + residentLabel(bay.car)
+      : bay.status;
+    var soc = null;
+    if (bay.car) {
+      var c = carByTag(bay.car);
+      if (c) soc = c.soc;
+    }
+    refs.barFill.style.width = soc === null ? "0%" : Math.min(100, soc).toFixed(0) + "%";
+  });
+}
+
+/* ---------------- bay cards + rail rows ---------------- */
+var bayUi = {};
+BAY_IDS.forEach(function (bayId) {
+  var wrap = document.getElementById("bays");
+  var div = document.createElement("div");
+  div.className = "bay";
+  div.innerHTML =
+    '<div class="top"><span class="name">' + esc(bayId) + ' · shared</span>' +
+    '<span class="chip Offline" data-r="chip">Offline</span></div>' +
+    '<div class="resident" data-r="resident">no car — bay is free</div>' +
+    '<div class="batt"><div class="battbar"><div class="battfill" data-r="battfill"></div></div>' +
+    '<div class="battlbl" data-r="battlbl">car battery —</div></div>' +
+    '<div class="readouts">' +
+    '<span>power <b data-r="kw">0.00 kW</b></span>' +
+    '<span>session <b data-r="skwh">0.000 kWh</b></span>' +
+    '<span class="cost">billed so far <b data-r="cost">₹0.00</b></span>' +
+    '<span>transaction <b data-r="tx">—</b></span>' +
+    "</div>" +
+    '<div class="srv" data-r="srv">server view: —</div>' +
+    '<div class="btns">' +
+    '<button class="primary" data-r="start">Bring in a car</button>' +
+    '<button data-r="stop" disabled>Stop &amp; unplug</button>' +
+    "</div>";
+  wrap.appendChild(div);
+  var refs = {};
+  div.querySelectorAll("[data-r]").forEach(function (n) { refs[n.getAttribute("data-r")] = n; });
+  refs.start.addEventListener("click", function () { sendControl({ control: "SimPlugIn", cpId: bayId }); });
+  refs.stop.addEventListener("click", function () { sendControl({ control: "SimUnplug", cpId: bayId }); });
+  bayUi[bayId] = refs;
+
+  var rows = document.getElementById("bayrows");
+  var row = document.createElement("div");
+  row.className = "brow";
+  var left = document.createElement("span");
+  left.textContent = bayId;
+  var right = document.createElement("span");
+  right.className = "st Offline";
+  right.textContent = "Offline";
+  row.appendChild(left);
+  row.appendChild(right);
+  rows.appendChild(row);
+  bayUi[bayId].rowLeft = left;
+  bayUi[bayId].rowRight = right;
+});
+
+function bayClicked(bayId) {
+  if (!world) return;
+  for (var i = 0; i < world.bays.length; i++) {
+    if (world.bays[i].cpId === bayId) {
+      if (world.bays[i].car) sendControl({ control: "SimUnplug", cpId: bayId });
+      else sendControl({ control: "SimPlugIn", cpId: bayId });
+      return;
+    }
+  }
+}
+
+function renderBays() {
+  if (!world) return;
+  world.bays.forEach(function (bay) {
+    var ui = bayUi[bay.cpId];
+    if (!ui) return;
+    ui.chip.className = "chip " + bay.status;
+    ui.chip.textContent = bay.status;
+    var car = bay.car ? carByTag(bay.car) : null;
+    var sess = bay.session;
+    if (bay.car && car) {
+      var r = residentsByTag[bay.car];
+      ui.resident.innerHTML = "<b>Flat " + esc(r ? r.flat : "") + " · " +
+        esc(r ? r.name : bay.car) + '</b> · RFID <span class="tag">' +
+        esc(bay.car) + "</span>";
+      ui.battfill.style.width = Math.min(100, car.soc).toFixed(0) + "%";
+      ui.battlbl.textContent = "car battery " + car.soc.toFixed(0) +
+        "% → target " + car.targetSoc.toFixed(0) + "%";
+    } else {
+      ui.resident.textContent = "no car — bay is free for any resident";
+      ui.battfill.style.width = "0%";
+      ui.battlbl.textContent = "car battery —";
+    }
+    ui.kw.textContent = sess ? (sess.powerW / 1000).toFixed(2) + " kW" : "0.00 kW";
+    ui.skwh.textContent = sess ? sess.kwh.toFixed(3) + " kWh" : "0.000 kWh";
+    ui.cost.textContent = "₹" + (sess ? sess.costSoFar : 0).toFixed(2);
+    ui.tx.textContent = sess ? "#" + sess.transactionId : "—";
+    ui.srv.textContent = "server view: " + bay.status +
+      (bay.phase && bay.phase !== "free" ? " · " + bay.phase : "");
+    ui.start.disabled = !!bay.car;
+    ui.stop.disabled = !bay.car;
+    ui.rowRight.className = "st " + bay.status;
+    ui.rowRight.textContent = bay.car
+      ? bay.status + " · " + residentLabel(bay.car)
+      : bay.status;
+  });
+  var q = document.getElementById("queuelist");
+  if (world.queue && world.queue.length) {
+    q.textContent = world.queue.map(function (tag, i) {
+      return (i + 1) + ". " + residentLabel(tag);
+    }).join("  →  ");
+  } else {
+    q.textContent = "empty";
+  }
+}
+
+/* ---------------- ledger, wallets, payments (server numbers only) --- */
+function renderLedger() {
+  if (!world) return;
+  document.getElementById("tKwh").textContent = world.ledger.kwh.toFixed(3) + " kWh";
+  document.getElementById("tRev").textContent = "₹" + world.ledger.revenue.toFixed(2);
+  document.getElementById("tSess").textContent = String(world.ledger.sessions);
+}
+function renderWallets() {
   var el = document.getElementById("wallets");
   var parts = ["<span>Resident wallets (from server):</span>"];
-  Object.keys(wallets).forEach(function (tag) {
-    parts.push("<span>" + esc(tag) + " <b>₹" + Number(wallets[tag]).toFixed(2) + "</b></span>");
+  Object.keys(residentsByTag).forEach(function (tag) {
+    var r = residentsByTag[tag];
+    var bal = balances[tag];
+    parts.push('<span><span class="who">' + esc(r.name) + " · " + esc(r.flat) +
+      "</span> · " + esc(tag) + " <b>₹" +
+      (bal === undefined ? "—" : Number(bal).toFixed(2)) + "</b></span>");
   });
   el.innerHTML = parts.join("<br/>");
 }
-var paymentsBox = document.getElementById("payments");
-var paymentsNone = document.createElement("div");
-paymentsNone.className = "none";
-paymentsNone.textContent = "No sessions billed yet — plug in a bay or play traffic.";
-paymentsBox.appendChild(paymentsNone);
 function bandMixText(bands) {
   if (!bands || !bands.length) return "";
   return bands.map(function (b) {
     return b.label + " " + Number(b.kwh).toFixed(2) + " kWh @ ₹" + b.rate;
   }).join(" · ");
 }
-function addPayment(msg) {
-  payments.unshift({
-    tag: msg.idTag, cpId: msg.cpId, kwh: msg.kwh, cost: msg.cost,
-    bands: msg.bands || [], at: simClockText()
+function renderPayments() {
+  var box = document.getElementById("payments");
+  box.innerHTML = "";
+  if (!world || !world.payments.length) {
+    var none = document.createElement("div");
+    none.className = "none";
+    none.textContent = "No sessions billed yet — bring in a car or play traffic.";
+    box.appendChild(none);
+    return;
+  }
+  world.payments.forEach(function (p) {
+    var div = document.createElement("div");
+    div.className = "pay";
+    div.innerHTML = "<b>₹" + Number(p.cost).toFixed(2) + "</b> · " +
+      esc(residentLabel(p.idTag)) + " · " + esc(p.cpId || "") + " · " +
+      Number(p.kwh).toFixed(3) + " kWh" +
+      (p.atSim ? " · " + esc(p.atSim) : "") +
+      (p.walletBalance !== null && p.walletBalance !== undefined
+        ? '<span class="mix">wallet after: ₹' + Number(p.walletBalance).toFixed(2) + "</span>" : "") +
+      (bandMixText(p.bands) ? '<span class="mix">' + esc(bandMixText(p.bands)) + "</span>" : "");
+    box.appendChild(div);
   });
-  if (paymentsNone) { paymentsBox.removeChild(paymentsNone); paymentsNone = null; }
-  var div = document.createElement("div");
-  div.className = "pay";
-  div.innerHTML = "<b>₹" + Number(msg.cost).toFixed(2) + "</b> · " + esc(msg.idTag || "") +
-    " · " + esc(msg.cpId || "") + " · " + Number(msg.kwh).toFixed(3) + " kWh · " +
-    esc(simClockText()) +
-    (bandMixText(msg.bands) ? '<span class="mix">' + esc(bandMixText(msg.bands)) + "</span>" : "");
-  paymentsBox.insertBefore(div, paymentsBox.firstChild);
-  while (paymentsBox.children.length > 8) paymentsBox.removeChild(paymentsBox.lastChild);
 }
 
 /* ---------------- live power (charging is real; base/limit are labelled
@@ -500,7 +764,6 @@ function addPayment(msg) {
 var BUILDING_BASE_KW = 25;
 var TRANSFORMER_LIMIT_KW = 90;
 var SOLAR_PEAK_KWP = 30;
-var powerByCp = {};
 function chargingKw() {
   var s = 0;
   Object.keys(powerByCp).forEach(function (k) { s += powerByCp[k] || 0; });
@@ -533,769 +796,63 @@ function renderPower() {
   document.getElementById("xfPct").textContent = pct.toFixed(0) + "%";
 }
 
-/* ---------------- one bay's card ---------------- */
-function buildBay(bay) {
-  var wrap = document.getElementById("bays");
-  var div = document.createElement("div");
-  div.className = "bay";
-  div.id = "bay-" + bay.id;
-  div.innerHTML =
-    '<div class="top"><span class="name">' + esc(bay.id) + "</span>" +
-    '<span class="chip Offline" data-r="chip">Offline</span></div>' +
-    '<div class="resident"><b>Flat ' + esc(bay.flat) + " · " + esc(bay.resident) +
-    '</b> · RFID <span class="tag">' + esc(bay.tag) + "</span></div>" +
-    '<div class="batt"><div class="battbar"><div class="battfill" data-r="battfill"></div></div>' +
-    '<div class="battlbl" data-r="battlbl">car battery —</div></div>' +
-    '<div class="readouts">' +
-    '<span>power <b data-r="kw">0.00 kW</b></span>' +
-    '<span>session <b data-r="skwh">0.000 kWh</b></span>' +
-    '<span class="cost">est. cost <b data-r="cost">₹0.00</b></span>' +
-    '<span>transaction <b data-r="tx">—</b></span>' +
-    "</div>" +
-    '<div class="srv" data-r="srv">server view: —</div>' +
-    '<div class="btns">' +
-    '<button class="primary" data-r="start" disabled>Plug in &amp; start</button>' +
-    '<button data-r="stop" disabled>Stop &amp; unplug</button>' +
-    "</div>";
-  wrap.appendChild(div);
-  var refs = {};
-  div.querySelectorAll("[data-r]").forEach(function (n) { refs[n.getAttribute("data-r")] = n; });
-  return refs;
-}
-
-/* ---------------- one bay's place on the animated map ---------------- */
-function slotCentrePct(idx) { return 10 + 16 * idx; }  // % of scene width
-function buildScene(cp, bay, idx) {
-  var slots = document.getElementById("slots");
-  var slot = document.createElement("div");
-  slot.className = "slot";
-  var ped = document.createElement("div");
-  ped.className = "ped";
-  ped.textContent = "⚡";
-  var spacer = document.createElement("div");
-  spacer.className = "spacer";
-  var bar = document.createElement("div");
-  bar.className = "slotbar";
-  var barFill = document.createElement("div");
-  barFill.className = "slotfill";
-  bar.appendChild(barFill);
-  var flat = document.createElement("div");
-  flat.className = "slotflat";
-  flat.textContent = bay.id + " · " + bay.flat;
-  var status = document.createElement("div");
-  status.className = "slotstatus Offline";
-  status.textContent = "Offline";
-  slot.appendChild(ped);
-  slot.appendChild(spacer);
-  slot.appendChild(bar);
-  slot.appendChild(flat);
-  slot.appendChild(status);
-  slots.appendChild(slot);
-
-  var cars = document.getElementById("cars");
-  var cable = document.createElement("div");
-  cable.className = "cable2";
-  cable.style.left = slotCentrePct(idx) + "%";
-  cars.appendChild(cable);
-  var car = document.createElement("div");
-  car.className = "car2";
-  car.style.left = "-16%";
-  car.style.top = "82%";
-  car.style.opacity = "0";
-  var body = document.createElement("div");
-  body.className = "carbody";
-  body.style.background = bay.color;
-  car.appendChild(body);
-  cars.appendChild(car);
-
-  cp.scene = { ped: ped, barFill: barFill, statusEl: status, carEl: car, cableEl: cable };
-  cp.mapLeft = slotCentrePct(idx) + "%";
-  cp.mapStage = "away";
-  cp.mapTimer = null;
-}
-
-/* Car choreography: gate (off-scene left, on the road) -> along the road
-   to in front of its bay -> up into the slot. Reverse on departure. */
-function syncMap(cp) {
-  var el = cp.scene.carEl;
-  if (cp.carPresent) {
-    if (cp.mapStage === "away") {
-      cp.mapStage = "road";
-      el.style.opacity = "1";
-      el.style.left = cp.mapLeft;
-      el.style.top = "82%";
-      clearTimeout(cp.mapTimer);
-      cp.mapTimer = setTimeout(function () {
-        if (cp.carPresent) { el.style.top = "45.5%"; cp.mapStage = "parked"; }
-      }, 1600);
-    } else if (cp.mapStage === "leaving") {
-      clearTimeout(cp.mapTimer);
-      el.style.top = "45.5%";
-      cp.mapStage = "parked";
-    }
-  } else {
-    if (cp.mapStage === "parked" || cp.mapStage === "road") {
-      cp.mapStage = "leaving";
-      el.style.top = "82%";
-      clearTimeout(cp.mapTimer);
-      cp.mapTimer = setTimeout(function () {
-        if (!cp.carPresent) {
-          el.style.left = "-16%";
-          el.style.opacity = "0";
-          cp.mapStage = "away";
-        }
-      }, 1600);
-    }
-  }
-}
-
-/* ---------------- one bay's row in the rail ---------------- */
-function buildRow(cp, bay) {
-  var wrap = document.getElementById("bayrows");
-  var row = document.createElement("div");
-  row.className = "brow";
-  var left = document.createElement("span");
-  left.textContent = bay.id + " · " + bay.flat + " " + bay.resident;
-  var right = document.createElement("span");
-  right.className = "st Offline";
-  right.textContent = "Offline";
-  row.appendChild(left);
-  row.appendChild(right);
-  wrap.appendChild(row);
-  cp.rowEl = right;
-}
-
-/* =====================================================================
-   A genuine OCPP 1.6J charge-point client (in the browser).
-   ===================================================================== */
-function ChargePoint(bay, idx) {
-  this.id = bay.id;
-  this.tag = bay.tag;
-  this.ui = buildBay(bay);
-  this.ws = null;
-  this.seq = 0;
-  this.pending = {};
-  this.booted = false;
-  this.heartbeatTimer = null;
-  this.reconnectTimer = null;
-  this.intentionalClose = false;
-  // charge-point state
-  this.status = "Offline";
-  this.operative = true;
-  this.carPresent = false;
-  this.register = 100000 + idx * 13777 + Math.floor(rand(0, 5000));
-  this.txId = null;
-  this.sessionStartRegister = 0;
-  this.soc = 0;
-  this.targetSoc = 90;
-  this.lastPowerW = 0;
-  this.powerCapW = null;
-  this.pendingAvailability = null;
-  this.reservation = null;
-  this.reservationTimer = null;
-  this.meterTimer = null;
-  this.finishTimer = null;
-  this.localListVersion = 0;
-  this.localList = [];
-  // simulator session state
-  this.sessionTargetKwh = null;   // set by traffic arrivals; null = manual
-  this.sessionCostEst = 0;        // page-side estimate at the running band
-  var self = this;
-  this.ui.start.addEventListener("click", function () { self.plugIn(); });
-  this.ui.stop.addEventListener("click", function () { self.endSession("Local"); });
-}
-
-ChargePoint.prototype.connect = function () {
-  var self = this;
-  this.intentionalClose = false;
-  var ws = new WebSocket(WS_BASE + "/" + this.id, "ocpp1.6");
-  this.ws = ws;
-  ws.onopen = function () {
-    logLine('<span class="cp">' + esc(self.id) + "</span> connected to the CSMS", "ok");
-    self.boot();
-  };
-  ws.onmessage = function (ev) { self.onFrame(ev.data); };
-  ws.onclose = function () {
-    if (self.booted) logLine('<span class="cp">' + esc(self.id) + "</span> disconnected", "err");
-    self.booted = false;
-    self.clearSessionTimers();
-    self.txId = null; self.carPresent = false;
-    self.sessionTargetKwh = null;
-    self.setStatus("Offline");
-    self.render();
-    if (!self.intentionalClose) {
-      self.reconnectTimer = setTimeout(function () { self.connect(); }, 3000);
-    }
-  };
-  ws.onerror = function () { /* onclose follows */ };
-};
-
-ChargePoint.prototype.sendRaw = function (frameStr) {
-  if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(frameStr);
-};
-ChargePoint.prototype.nextId = function () {
-  this.seq += 1;
-  return "js-" + this.id + "-" + this.seq + "-" + Math.floor(Math.random() * 1e6);
-};
-ChargePoint.prototype.call = function (action, payload) {
-  var self = this;
-  var id = this.nextId();
-  var frame = JSON.stringify([2, id, action, payload || {}]);
-  return new Promise(function (resolve, reject) {
-    self.pending[id] = { resolve: resolve, reject: reject };
-    self.sendRaw(frame);
-    setTimeout(function () {
-      if (self.pending[id]) { delete self.pending[id]; reject(new Error("timeout: " + action)); }
-    }, 15000);
-  });
-};
-ChargePoint.prototype.replyResult = function (id, payload) {
-  this.sendRaw(JSON.stringify([3, id, payload || {}]));
-};
-ChargePoint.prototype.replyError = function (id, code, desc) {
-  this.sendRaw(JSON.stringify([4, id, code, desc || "", {}]));
-};
-
-ChargePoint.prototype.onFrame = function (raw) {
-  var frame;
-  try { frame = JSON.parse(raw); } catch (e) { return; }
-  if (!Array.isArray(frame)) return;
-  var type = frame[0], id = frame[1];
-  if (type === 3 || type === 4) {
-    var p = this.pending[id];
-    if (p) {
-      delete this.pending[id];
-      if (type === 3) p.resolve(frame[2] || {});
-      else p.reject(new Error("CALLERROR " + frame[2] + ": " + frame[3]));
-    }
-    return;
-  }
-  if (type === 2) {
-    var action = frame[2], payload = frame[3] || {};
-    try {
-      var result = this.handleServerCall(action, payload);
-      this.replyResult(id, result || {});
-    } catch (e) {
-      if (e && e.ocppError) this.replyError(id, e.ocppError, "");
-      else this.replyError(id, "InternalError", String((e && e.message) || e));
-    }
-  }
-};
-
-/* ------------- server-initiated calls (CSMS -> this charger) ------------- */
-ChargePoint.prototype.handleServerCall = function (action, payload) {
-  var self = this;
-  switch (action) {
-    case "RemoteStartTransaction": {
-      if (this.carPresent || this.txId !== null || !this.booted) return { status: "Rejected" };
-      if (!this.operative || this.status === "Unavailable") return { status: "Rejected" };
-      if (this.status === "Reserved" && this.reservation &&
-          this.reservation.idTag !== payload.idTag) return { status: "Rejected" };
-      var tag = payload.idTag || this.tag;
-      setTimeout(function () { self.beginCharge(tag); }, 100);
-      return { status: "Accepted" };
-    }
-    case "RemoteStopTransaction": {
-      if (this.txId !== null && payload.transactionId === this.txId) {
-        setTimeout(function () { self.endSession("Remote"); }, 100);
-        return { status: "Accepted" };
-      }
-      return { status: "Rejected" };
-    }
-    case "Reset": {
-      var self2 = this;
-      setTimeout(function () {
-        self2.intentionalClose = false;
-        if (self2.ws) { try { self2.ws.close(); } catch (e) {} }
-      }, 350);
-      return { status: "Accepted" };
-    }
-    case "UnlockConnector": {
-      if (this.status === "Finishing") return { status: "Unlocked" };
-      return { status: "UnlockFailed" };
-    }
-    case "ChangeAvailability": {
-      var type = payload.type;
-      if (this.txId !== null && type === "Inoperative") {
-        this.pendingAvailability = "Inoperative";
-        return { status: "Scheduled" };
-      }
-      this.applyAvailability(type);
-      return { status: "Accepted" };
-    }
-    case "TriggerMessage": {
-      var want = payload.requestedMessage;
-      var self3 = this;
-      setTimeout(function () { self3.trigger(want); }, 100);
-      return { status: "Accepted" };
-    }
-    case "ReserveNow": {
-      if (this.status === "Available" && this.operative && !this.carPresent) {
-        this.reservation = { id: payload.reservationId, idTag: payload.idTag };
-        this.setStatus("Reserved");
-        var self4 = this;
-        var ttl = 90000;
-        if (payload.expiryDate) {
-          var t = Date.parse(payload.expiryDate) - Date.now();
-          if (t > 0 && t < 3600000) ttl = t;
-        }
-        clearTimeout(this.reservationTimer);
-        this.reservationTimer = setTimeout(function () {
-          if (self4.reservation && self4.status === "Reserved") {
-            self4.reservation = null; self4.setStatus("Available");
-          }
-        }, ttl);
-        return { status: "Accepted" };
-      }
-      return { status: "Rejected" };
-    }
-    case "CancelReservation": {
-      if (this.reservation && payload.reservationId === this.reservation.id) {
-        this.reservation = null;
-        clearTimeout(this.reservationTimer);
-        if (this.status === "Reserved") this.setStatus("Available");
-        return { status: "Accepted" };
-      }
-      return { status: "Rejected" };
-    }
-    case "SetChargingProfile": {
-      var profiles = payload.csChargingProfiles || [];
-      for (var i = 0; i < profiles.length; i++) {
-        var sched = profiles[i].chargingSchedule;
-        if (sched && sched.chargingSchedulePeriod && sched.chargingSchedulePeriod.length) {
-          var limit = sched.chargingSchedulePeriod[0].limit;
-          this.powerCapW = (sched.chargingRateUnit === "A") ? limit * VOLTAGE_V : limit;
-          this.render();
-          return { status: "Accepted" };
-        }
-      }
-      return { status: "Rejected" };
-    }
-    case "ClearChargingProfile": {
-      this.powerCapW = null;
-      this.render();
-      return { status: "Accepted" };
-    }
-    case "GetCompositeSchedule": {
-      var cap = this.powerCapW !== null ? this.powerCapW : BASE_POWER_W;
-      return { status: "Accepted", connectorId: payload.connectorId || 1,
-               schedule: { duration: payload.duration || 3600, chargingRateUnit: "W",
-                           chargingSchedulePeriod: [{ startPeriod: 0, limit: cap }] } };
-    }
-    case "GetConfiguration": {
-      var known = [
-        { key: "HeartbeatInterval", readonly: true, value: "30" },
-        { key: "MeterValueSampleInterval", readonly: false, value: "2" },
-        { key: "AuthorizeRemoteTxRequests", readonly: false, value: "true" }
-      ];
-      var unknown = [];
-      if (payload.key) {
-        payload.key.forEach(function (k) {
-          if (!known.some(function (e) { return e.key === k; })) unknown.push(k);
-        });
-        known = known.filter(function (e) { return payload.key.indexOf(e.key) >= 0; });
-      }
-      return { configurationKey: known, unknownKey: unknown };
-    }
-    case "GetLocalListVersion":
-      return { listVersion: this.localListVersion };
-    case "SendLocalList": {
-      this.localListVersion = payload.listVersion || this.localListVersion;
-      if (payload.updateType === "Full") this.localList = payload.localAuthorizationList || [];
-      else if (payload.localAuthorizationList) {
-        var self5 = this;
-        payload.localAuthorizationList.forEach(function (e) { self5.localList.push(e); });
-      }
-      return { status: "Accepted" };
-    }
-    case "ClearCache":
-      return { status: "Accepted" };
-    case "GetDiagnostics": {
-      var self6 = this;
-      setTimeout(function () {
-        self6.call("DiagnosticsStatusNotification", { status: "Uploaded" }).catch(function () {});
-      }, 800);
-      return { fileName: "diagnostics-" + this.id + ".log" };
-    }
-    case "UpdateFirmware": {
-      var self7 = this;
-      setTimeout(function () {
-        self7.call("FirmwareStatusNotification", { status: "Downloading" }).catch(function () {});
-      }, 1500);
-      setTimeout(function () {
-        self7.call("FirmwareStatusNotification", { status: "Installed" }).catch(function () {});
-      }, 4500);
-      return {};
-    }
-    case "DataTransfer":
-      return { status: "Accepted" };
-    default:
-      throw { ocppError: "NotImplemented" };
-  }
-};
-
-ChargePoint.prototype.applyAvailability = function (type) {
-  if (type === "Inoperative") {
-    this.operative = false;
-    if (this.txId === null) this.setStatus("Unavailable");
-  } else {
-    this.operative = true;
-    if (this.txId === null && !this.carPresent) {
-      this.setStatus(this.reservation ? "Reserved" : "Available");
-    }
-  }
-  this.render();
-};
-
-ChargePoint.prototype.trigger = function (want) {
-  if (want === "BootNotification") this.boot();
-  else if (want === "Heartbeat") this.call("Heartbeat", {}).catch(function () {});
-  else if (want === "StatusNotification") this.statusNotification(this.status);
-  else if (want === "MeterValues") this.sendMeterValues();
-  else if (want === "DiagnosticsStatusNotification") {
-    this.call("DiagnosticsStatusNotification", { status: "Idle" }).catch(function () {});
-  } else if (want === "FirmwareStatusNotification") {
-    this.call("FirmwareStatusNotification", { status: "Idle" }).catch(function () {});
-  }
-};
-
-/* ------------- charger-initiated flows ------------- */
-ChargePoint.prototype.boot = function () {
-  var self = this;
-  this.call("BootNotification", {
-    chargePointVendor: "Simplecharge",
-    chargePointModel: "SocietyWallbox 7.4",
-    chargePointSerialNumber: "SN-" + this.id,
-    firmwareVersion: "1.1.0"
-  }).then(function (res) {
-    self.booted = true;
-    var interval = (res && res.interval) || 30;
-    clearInterval(self.heartbeatTimer);
-    self.heartbeatTimer = setInterval(function () {
-      self.call("Heartbeat", {}).catch(function () {});
-    }, interval * 1000);
-    if (self.status === "Offline") self.setStatus(self.operative ? "Available" : "Unavailable");
-    self.render();
-  }).catch(function () { /* server may be down; reconnect handles it */ });
-};
-
-ChargePoint.prototype.setStatus = function (status) {
-  this.status = status;
-  this.render();
-};
-ChargePoint.prototype.statusNotification = function (status) {
-  this.setStatus(status);
-  return this.call("StatusNotification", {
-    connectorId: 1, errorCode: "NoError", status: status, timestamp: isoSim()
-  }).catch(function () {});
-};
-
-/* A car arrives at this bay: it animates in on the map, the resident's
-   RFID tag is authorized against the server wallet, then charging
-   begins. targetKwh is set by the traffic engine (a simulated visit of
-   that many kWh); manual plug-ins pass nothing and run to ~full. */
-ChargePoint.prototype.plugIn = function (targetKwh) {
-  if (!this.booted || this.carPresent || this.txId !== null) return false;
-  if (!this.operative || this.status !== "Available") return false;
-  var self = this;
-  this.sessionTargetKwh = (typeof targetKwh === "number") ? targetKwh : null;
-  this.carPresent = true;
-  this.soc = rand(18, 45);
-  this.render();
-  this.statusNotification("Preparing");
-  setTimeout(function () {
-    self.call("Authorize", { idTag: self.tag }).then(function (res) {
-      var st = res && res.idTagInfo && res.idTagInfo.status;
-      if (st !== "Accepted") {
-        setTimeout(function () {
-          self.carPresent = false;
-          self.sessionTargetKwh = null;
-          self.statusNotification("Available");
-          self.render();
-        }, 1400);
-        return;
-      }
-      self.beginCharge(self.tag);
-    }).catch(function () {
-      self.carPresent = false;
-      self.sessionTargetKwh = null;
-      self.statusNotification("Available");
-      self.render();
-    });
-  }, 600);
-  return true;
-};
-
-/* StartTransaction + meter loop. Used by the local plug-in flow (after
-   Authorize) and by RemoteStartTransaction (server already authorized). */
-ChargePoint.prototype.beginCharge = function (tag) {
-  var self = this;
-  this.carPresent = true;
-  if (this.soc <= 0) this.soc = rand(18, 45);
-  this.targetSoc = this.sessionTargetKwh ? 99 : rand(85, 97);
-  this.sessionCostEst = 0;
-  this.render();
-  var doStart = function () {
-    self.sessionStartRegister = self.register;
-    self.call("StartTransaction", {
-      connectorId: 1, idTag: tag,
-      meterStart: Math.round(self.register), timestamp: isoSim()
-    }).then(function (res) {
-      self.txId = res.transactionId;
-      self.statusNotification("Charging");
-      self.meterTimer = setInterval(function () { self.meterTick(); }, METER_MS);
-      self.render();
-    }).catch(function () {
-      self.carPresent = false;
-      self.sessionTargetKwh = null;
-      self.statusNotification("Available");
-      self.render();
-    });
-  };
-  if (this.status !== "Preparing") {
-    this.statusNotification("Preparing");
-    setTimeout(doStart, 500);
-  } else {
-    doStart();
-  }
-};
-
-ChargePoint.prototype.effectivePower = function () {
-  var p = BASE_POWER_W + rand(-70, 70);
-  // gentle taper as the battery fills
-  if (this.soc > 85) p *= 0.55; else if (this.soc > 70) p *= 0.8;
-  if (this.powerCapW !== null) p = Math.min(p, this.powerCapW);
-  return p;
-};
-
-ChargePoint.prototype.sessionKwh = function () {
-  return this.txId !== null ? (this.register - this.sessionStartRegister) / 1000 : 0;
-};
-
-ChargePoint.prototype.meterTick = function () {
-  if (this.txId === null) return;
-  var p = this.effectivePower();
-  this.lastPowerW = p;
-  // Energy for one tick of SIMULATED time: at speed s, METER_MS of real
-  // time carries s * METER_MS of sim time, so sessions (and their meter
-  // timestamps) compress together — the server bills the same either way.
-  // Wh = W * sim-seconds / 3600, and sim-seconds per tick = METER_MS/1000 * s.
-  var wh = p * METER_MS * SIM.speed / 3600000;
-  this.register += wh;
-  this.soc = Math.min(100, this.soc + (wh / 1000) / BATTERY_KWH * 100);
-  this.sessionCostEst += (wh / 1000) * BANDS[simBand()].rate;
-  this.sendMeterValues(p);
-  this.render();
-  if (this.sessionTargetKwh !== null && this.sessionKwh() >= this.sessionTargetKwh) {
-    this.endSession("Local"); // traffic visit reached its energy target
-  } else if (this.sessionTargetKwh === null && this.soc >= this.targetSoc) {
-    this.endSession("Local"); // battery full enough
-  }
-};
-
-ChargePoint.prototype.sendMeterValues = function (powerW) {
-  var p = (typeof powerW === "number") ? powerW : this.effectivePower();
-  this.call("MeterValues", {
-    connectorId: 1,
-    transactionId: this.txId,
-    meterValue: [{
-      timestamp: isoSim(),
-      sampledValue: [
-        { value: this.register.toFixed(1), measurand: "Energy.Active.Import.Register", unit: "Wh" },
-        { value: String(Math.round(p)), measurand: "Power.Active.Import", unit: "W" },
-        { value: (p / VOLTAGE_V).toFixed(1), measurand: "Current.Import", unit: "A" },
-        { value: String(VOLTAGE_V), measurand: "Voltage", unit: "V" },
-        { value: this.soc.toFixed(1), measurand: "SoC", unit: "Percent" }
-      ]
-    }]
-  }).catch(function () {});
-};
-
-ChargePoint.prototype.clearSessionTimers = function () {
-  clearInterval(this.meterTimer); this.meterTimer = null;
-  clearTimeout(this.finishTimer); this.finishTimer = null;
-};
-
-/* Stop & unplug (button, remote stop, full battery, or a traffic visit
-   reaching its target): StopTransaction, the server bills the wallet
-   with time-of-use pricing, then the car drives off. */
-ChargePoint.prototype.endSession = function (reason) {
-  if (this.txId === null) return;
-  var self = this;
-  var tx = this.txId;
-  this.clearSessionTimers();
-  this.txId = null;
-  this.lastPowerW = 0;
-  this.sessionTargetKwh = null;
-  this.call("StopTransaction", {
-    transactionId: tx, meterStop: Math.round(this.register),
-    timestamp: isoSim(), reason: reason || "Local"
-  }).catch(function () {}).then(function () {
-    self.statusNotification("Finishing");
-    self.finishTimer = setTimeout(function () {
-      self.carPresent = false;
-      if (self.pendingAvailability) {
-        var pa = self.pendingAvailability; self.pendingAvailability = null;
-        self.applyAvailability(pa);
-      } else if (!self.operative) {
-        self.statusNotification("Unavailable");
-      } else if (self.reservation) {
-        self.statusNotification("Reserved");
-      } else {
-        self.statusNotification("Available");
-      }
-      self.render();
-    }, 2500);
-    self.render();
-  });
-};
-
-/* ------------- rendering (card + map + rail row) ------------- */
-ChargePoint.prototype.render = function () {
-  var u = this.ui;
-  var status = this.booted ? this.status : "Offline";
-  u.chip.textContent = status;
-  u.chip.className = "chip " + status;
-  var charging = this.txId !== null;
-  var skwh = this.sessionKwh();
-  u.kw.textContent = (charging ? this.lastPowerW / 1000 : 0).toFixed(2) + " kW";
-  u.skwh.textContent = skwh.toFixed(3) + " kWh";
-  u.cost.textContent = "₹" + this.sessionCostEst.toFixed(2);
-  u.tx.textContent = this.txId !== null ? "#" + this.txId : "—";
-  // Progress bar: traffic visits fill toward their energy target,
-  // manual sessions toward the battery target.
-  var pct, lbl;
-  if (!this.carPresent) { pct = 0; lbl = "car battery —"; }
-  else if (this.sessionTargetKwh !== null && this.sessionTargetKwh > 0) {
-    pct = Math.min(100, skwh / this.sessionTargetKwh * 100);
-    lbl = "visit progress " + pct.toFixed(0) + "% · target " + this.sessionTargetKwh.toFixed(1) + " kWh";
-  } else {
-    pct = this.soc;
-    lbl = "car battery " + this.soc.toFixed(0) + "%";
-  }
-  u.battfill.style.width = pct.toFixed(1) + "%";
-  u.battlbl.textContent = lbl;
-  u.start.disabled = !(this.booted && this.operative && !this.carPresent &&
-                       this.txId === null && this.status === "Available");
-  u.stop.disabled = !charging;
-  // map
-  if (this.scene) {
-    var cableOn = charging || this.status === "Preparing";
-    this.scene.ped.className = "ped" + (cableOn ? " on" : "");
-    this.scene.cableEl.style.opacity = cableOn ? "1" : "0";
-    this.scene.carEl.className = "car2" + (charging ? " charging" : "");
-    this.scene.barFill.style.width = pct.toFixed(1) + "%";
-    this.scene.statusEl.className = "slotstatus " + status;
-    this.scene.statusEl.textContent = status +
-      (charging ? " · " + (this.lastPowerW / 1000).toFixed(1) + " kW" : "");
-    syncMap(this);
-  }
-  // rail row
-  if (this.rowEl) {
-    this.rowEl.className = "st " + status;
-    this.rowEl.textContent = status +
-      (charging ? " · " + (this.lastPowerW / 1000).toFixed(1) + " kW" : "");
-  }
-};
-
-/* ---------------- traffic engine ----------------
-   When playing, residents arrive at free bays and run REAL sessions
-   through the server — the only thing the engine decides is who shows
-   up, at which bay, and how much energy they take. Arrivals are spaced
-   in simulation minutes; the energy target ends the visit. */
-function trafficTick() {
-  if (!SIM.playing) return;
-  if (SIM.nextArrivalMs === 0) {
-    SIM.nextArrivalMs = SIM.nowMs + rand(1, 3) * 60000;
-    return;
-  }
-  if (SIM.nowMs < SIM.nextArrivalMs) return;
-  var free = clients.filter(function (c) {
-    return c.booted && c.operative && !c.carPresent && c.txId === null &&
-           c.status === "Available";
-  });
-  if (!free.length) {
-    SIM.nextArrivalMs = SIM.nowMs + 5 * 60000;
-    return;
-  }
-  var cp = free[Math.floor(Math.random() * free.length)];
-  var target = rand(2.5, 7);
-  if (cp.plugIn(target)) {
-    var bay = bayById(cp.id);
-    logLine("🚗 traffic · " + esc(bay.resident) + " (" + esc(bay.flat) + ") arrived at " +
-            esc(cp.id) + " · wants " + target.toFixed(1) + " kWh", "dim");
-  }
-  SIM.nextArrivalMs = SIM.nowMs + rand(8, 20) * 60000;
-}
-
-function setSpeed(n) {
-  SIM.speed = n;
-  [1, 3, 10, 30].forEach(function (s) {
-    document.getElementById("spd" + s).className = "spdbtn" + (s === n ? " on" : "");
-  });
-}
-function setTraffic(on) {
-  SIM.playing = on;
-  document.getElementById("btnTraffic").textContent = on ? "⏸ Pause traffic" : "▶ Play traffic";
-  if (on && SIM.nextArrivalMs < SIM.nowMs) SIM.nextArrivalMs = SIM.nowMs + 60000;
-  logLine(on ? "▶ traffic playing — residents will come and go" :
-               "⏸ traffic paused — bays are yours to drive manually", "dim");
-}
-function resetDay() {
-  SIM.nowMs = Date.now();
-  SIM.nextArrivalMs = 0;
-  totals = { kwh: 0, revenue: 0, sessions: 0 };
-  payments = [];
-  while (paymentsBox.firstChild) paymentsBox.removeChild(paymentsBox.lastChild);
-  paymentsNone = document.createElement("div");
-  paymentsNone.className = "none";
-  paymentsNone.textContent = "No sessions billed yet — plug in a bay or play traffic.";
-  paymentsBox.appendChild(paymentsNone);
-  renderTotals();
-  logLine("— day reset · clock back to real time, tallies cleared (server wallets persist) —", "dim");
-}
-
-/* ---------------- boot the six bay clients ---------------- */
-var clients = BAYS.map(function (bay, i) {
-  var cp = new ChargePoint(bay, i);
-  buildScene(cp, bay, i);
-  buildRow(cp, bay);
-  cp.connect();
-  return cp;
-});
-function clientById(id) {
-  for (var i = 0; i < clients.length; i++) if (clients[i].id === id) return clients[i];
-  return null;
-}
-function bayById(id) {
-  for (var i = 0; i < BAYS.length; i++) if (BAYS[i].id === id) return BAYS[i];
-  return BAYS[0];
-}
-
 /* ---------------- controls ---------------- */
-document.getElementById("btnTraffic").addEventListener("click", function () {
-  setTraffic(!SIM.playing);
-});
-[1, 3, 10, 30].forEach(function (s) {
-  document.getElementById("spd" + s).addEventListener("click", function () { setSpeed(s); });
-});
-document.getElementById("btnReset").addEventListener("click", function () { resetDay(); });
-
-/* ---------------- observer socket (log + ledger + server view) ---------------- */
 var obs = null;
+function sendControl(obj) {
+  if (obs && obs.readyState === WebSocket.OPEN) obs.send(JSON.stringify(obj));
+}
+function renderControls() {
+  var btn = document.getElementById("btnTraffic");
+  btn.textContent = clockBase.playing ? "⏸ Pause traffic" : "▶ Play traffic";
+  [1, 3, 10, 30].forEach(function (n) {
+    document.getElementById("spd" + n).className =
+      "spdbtn" + (clockBase.speed === n ? " on" : "");
+  });
+}
+document.getElementById("btnTraffic").addEventListener("click", function () {
+  sendControl({ control: "SimTraffic", playing: !clockBase.playing });
+});
+[1, 3, 10, 30].forEach(function (n) {
+  document.getElementById("spd" + n).addEventListener("click", function () {
+    sendControl({ control: "SimSpeed", speed: n });
+  });
+});
+document.getElementById("btnReset").addEventListener("click", function () {
+  sendControl({ control: "SimReset" });
+});
+
+/* ---------------- world rendering ---------------- */
+function applyWorld(msg) {
+  world = msg;
+  msg.residents.forEach(function (r) {
+    residentsByTag[r.tag] = r;
+    balances[r.tag] = r.balance;
+    if (!carEls[r.tag]) buildCar(r);
+  });
+  rebaseClock(msg.sim.nowMs, msg.sim.speed, msg.sim.playing);
+  renderCars();
+  renderBays();
+  renderLedger();
+  renderWallets();
+  renderPayments();
+  renderPower();
+}
+
+/* ---------------- observer socket ---------------- */
 function connectObserver() {
   obs = new WebSocket(WS_BASE + "/observe");
   var pill = document.getElementById("obsPill");
   obs.onopen = function () {
-    pill.innerHTML = '<span class="dot"></span>live — connected to the real server';
     pill.className = "pill ok";
-    logLine("Observer connected — watching the CSMS", "ok");
+    pill.innerHTML = '<span class="dot"></span>watching the server world';
+    logLine("observer connected — the server will send the current world", "ok");
   };
   obs.onclose = function () {
-    pill.innerHTML = '<span class="dot"></span>server unreachable — reconnecting…';
     pill.className = "pill bad";
+    pill.innerHTML = '<span class="dot"></span>observer disconnected — reconnecting…';
     setTimeout(connectObserver, 3000);
   };
+  obs.onerror = function () { /* onclose follows */ };
   obs.onmessage = function (ev) {
     var msg;
     try { msg = JSON.parse(ev.data); } catch (e) { return; }
@@ -1304,56 +861,57 @@ function connectObserver() {
       if (line) logLine(line.html, line.cls);
       return;
     }
-    if (msg.event === "meter") {
-      if (msg.cpId) { powerByCp[msg.cpId] = msg.power || 0; renderPower(); }
-      return;
-    }
-    if (msg.event === "summary") {
-      if (msg.cpId) { powerByCp[msg.cpId] = 0; renderPower(); }
-      lastSummary = msg;
-      totals.kwh += msg.kwh || 0;
-      totals.revenue += msg.cost || 0;
-      totals.sessions += 1;
-      renderTotals();
-      addPayment(msg);
-      logLine("◆ " + esc(msg.cpId) + " session complete · " + esc(msg.idTag || "") +
-              " · " + (msg.kwh || 0).toFixed(3) + " kWh · ₹" + (msg.cost || 0).toFixed(2) +
-              " billed by server" +
-              (bandMixText(msg.bands) ? " · " + esc(bandMixText(msg.bands)) : "") +
-              (msg.walletBalance === null || msg.walletBalance === undefined
-                ? "" : " · wallet now ₹" + Number(msg.walletBalance).toFixed(2)), "sum");
-      return;
-    }
-    if (msg.event === "wallets") { renderWallets(msg.wallets); return; }
-    if (msg.event === "state") {
-      if (msg.cpId && msg.status && msg.status !== "Charging") {
-        powerByCp[msg.cpId] = 0;
+    switch (msg.event) {
+      case "world":
+        applyWorld(msg);
+        break;
+      case "sim":
+        rebaseClock(msg.nowMs, msg.speed, msg.playing);
+        break;
+      case "state":
+        if (bayUi[msg.cpId]) {
+          bayUi[msg.cpId].srv.textContent = "server view: " + msg.status +
+            (msg.vendor ? " · " + msg.vendor + " " + (msg.model || "") : "");
+        }
+        break;
+      case "meter":
+        if (typeof msg.power === "number") powerByCp[msg.cpId] = msg.power;
         renderPower();
+        break;
+      case "summary": {
+        powerByCp[msg.cpId] = 0;
+        var who = residentsByTag[msg.idTag]
+          ? residentLabel(msg.idTag) : msg.idTag;
+        logLine("💰 " + esc(msg.cpId) + " billed <b>" + esc(who) + "</b> ₹" +
+          Number(msg.cost).toFixed(2) + " · " + Number(msg.kwh).toFixed(3) +
+          " kWh" + (bandMixText(msg.bands) ? " · " + esc(bandMixText(msg.bands)) : ""),
+          "sum");
+        renderPower();
+        break;
       }
-      var cp = clientById(msg.cpId);
-      if (cp) {
-        cp.ui.srv.textContent = "server view: " + (msg.status || "—") +
-          (msg.model ? " · " + msg.model : "");
+      case "wallets":
+        balances = msg.wallets || balances;
+        renderWallets();
+        break;
+      case "sim_event": {
+        var icons = { arrive: "🚗", wait: "⏳", dequeue: "🔌",
+                      charge_start: "🔌", charge_done: "✅", leave: "↩️",
+                      park: "🅿️", summon: "📣", reset: "↺", note: "ℹ️" };
+        logLine((icons[msg.kind] || "·") + " " + esc(msg.text || ""), "dim");
+        break;
       }
-      return;
-    }
-    if (msg.event === "control_result") {
-      logLine("◆ operator " + esc(msg.control) + " → " + esc(msg.cpId) + ": " +
-              esc(JSON.stringify(msg.result)), "ok");
-      return;
-    }
-    if (msg.event === "control_error") {
-      logLine("◆ operator " + esc(msg.control) + " → " + esc(msg.cpId) +
-              " failed: " + esc(msg.error || ""), "err");
-      return;
+      case "control_error":
+        logLine("control " + esc(msg.control || "") + " failed: " +
+          esc(msg.error || ""), "err");
+        break;
+      default:
+        break;
     }
   };
 }
 connectObserver();
-renderTotals();
-renderPower();
-setInterval(simTick, 250);
-simTick();
+setInterval(clockTick, 250);
+logLine("page loaded — joining the shared world on the server…", "dim");
 </script>
 </body>
 </html>

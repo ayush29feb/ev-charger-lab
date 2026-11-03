@@ -34,7 +34,14 @@ Every raw frame in both directions is broadcast to all observers as:
 
 plus {"event": "state", ...} snapshots on connector status changes and
 {"event": "summary", ...} + {"event": "wallets", ...} when a session is
-billed. Billing is time-of-use: each MeterValues interval's energy is
+billed. On top of the raw protocol sits a society simulation with SHARED
+bays: ten residents (wallets belong to people, not bays) and four bays
+whose charge points are loopback OCPP clients of this same CSMS. Cars
+arrive, charge in any free bay, or park in ordinary parking and queue;
+the whole world state is broadcast as {"event": "world", ...} snapshots
+and replayed to every observer on join. Observers steer it with Sim*
+controls (SimPlugIn, SimUnplug, SimTraffic, SimSpeed, SimReset).
+Billing is time-of-use: each MeterValues interval's energy is
 priced by the tariff band of that interval's own timestamp (Night
 23:00-06:00 ₹10/kWh, Solar hours 09:00-16:00 ₹12/kWh, Evening peak
 17:00-22:00 ₹18/kWh, all other hours ₹14/kWh), the final interval up to
@@ -43,19 +50,25 @@ carries the total plus a per-band breakdown. Debited from an in-memory
 wallet keyed by idTag.
 
 Dependencies: Python 3.12 stdlib + `websockets` only (same venv as the lab).
+
+The society simulation (shared bays, resident pool, queue, traffic) is
+implemented further down — see the "Society simulation" section banner.
 """
 
 import asyncio
 import itertools
 import json
 import os
+import random
 import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from websockets.asyncio.client import connect as ws_connect
 from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
 
@@ -65,6 +78,8 @@ HTTP_PORT = 8080
 HEARTBEAT_INTERVAL_S = 30
 
 # In-memory wallets (₹). Any idTag not listed here is rejected as Invalid.
+# Wallets belong to PEOPLE (residents), never to bays: the bays are
+# shared, and a session bills whichever resident's car is plugged in.
 WALLETS = {
     "DEMO1234": 500.00,
     "AYUSH001": 250.00,
@@ -72,7 +87,35 @@ WALLETS = {
     "RAHUL003": 150.00,
     "MEERA004": 400.00,
     "ARJUN005": 350.00,
+    "KAVYA006": 300.00,
+    "ROHAN007": 275.00,
+    "SNEHA008": 325.00,
+    "VIKRAM009": 200.00,
 }
+
+# The resident pool: ten EV owners in the building. tag -> display info.
+RESIDENTS = {
+    "DEMO1234": {"name": "Demo",   "flat": "B-707",  "color": "#66707e"},
+    "AYUSH001": {"name": "Ayush",  "flat": "A-302",  "color": "#7d8a99"},
+    "PRIYA002": {"name": "Priya",  "flat": "C-1801", "color": "#6f8579"},
+    "RAHUL003": {"name": "Rahul",  "flat": "A-503",  "color": "#8a7f6d"},
+    "MEERA004": {"name": "Meera",  "flat": "B-1202", "color": "#71808f"},
+    "ARJUN005": {"name": "Arjun",  "flat": "D-904",  "color": "#83748a"},
+    "KAVYA006": {"name": "Kavya",  "flat": "C-1105", "color": "#7d7462"},
+    "ROHAN007": {"name": "Rohan",  "flat": "A-1108", "color": "#5f7d84"},
+    "SNEHA008": {"name": "Sneha",  "flat": "D-603",  "color": "#8a8296"},
+    "VIKRAM009": {"name": "Vikram", "flat": "B-1509", "color": "#6d7f74"},
+}
+
+# Four SHARED charging bays and a row of ordinary parking spots.
+SIM_BAYS = ["BAY-01", "BAY-02", "BAY-03", "BAY-04"]
+PARKING_SPOTS = 10
+
+# Server-side ledger + recent payments (also carried in world snapshots,
+# so a rejoining observer sees the same history as everyone else).
+LEDGER = {"sessions": 0, "kwh": 0.0, "revenue": 0.0}
+PAYMENTS = []          # most recent first, capped at 12
+PAYMENTS_CAP = 12
 
 
 # --------------------------------------------------------------------------
@@ -300,6 +343,7 @@ class ChargePointConnection:
             "meter_start": payload.get("meterStart", 0),
             "register": payload.get("meterStart", 0),
             "power_w": 0.0,
+            "soc": None,
             "started_at": datetime.now(timezone.utc),
             # Time-of-use pricing state: energy is priced interval by
             # interval as MeterValues arrive, keyed off the register.
@@ -358,6 +402,8 @@ class ChargePointConnection:
                 session["register"] = register
                 if power is not None:
                     session["power_w"] = power
+                if soc is not None:
+                    session["soc"] = soc
                 delivered = (register - session["meter_start"]) / 1000.0
             else:
                 delivered = float("nan")
@@ -436,13 +482,25 @@ class ChargePointConnection:
             f"wallet[{id_tag}]={balance}"
         )
         log(f"CSMS:{self.id}", summary)
-        await broadcast({
+        summary_event = {
             "event": "summary", "cpId": self.id,
             "transactionId": transaction_id, "idTag": id_tag,
             "meterStart": meter_start, "meterStop": meter_stop,
             "kwh": round(total_kwh, 3), "cost": cost, "bands": bands,
             "durationS": round(duration_s, 1), "walletBalance": balance,
-        })
+        }
+        world = globals().get("WORLD")
+        if world is not None:
+            summary_event["atSim"] = world.sim_clock_text()
+        await broadcast(summary_event)
+        LEDGER["sessions"] += 1
+        LEDGER["kwh"] = round(LEDGER["kwh"] + summary_event["kwh"], 3)
+        LEDGER["revenue"] = round(LEDGER["revenue"] + cost, 2)
+        PAYMENTS.insert(0, {k: v for k, v in summary_event.items()
+                            if k != "event"})
+        del PAYMENTS[PAYMENTS_CAP:]
+        if world is not None:
+            await world.broadcast_world()
         await broadcast_wallets()
         return {"idTagInfo": {"status": "Accepted"}}
 
@@ -454,6 +512,610 @@ class ChargePointConnection:
 
     async def on_FirmwareStatusNotification(self, payload: dict) -> dict:
         return {}
+
+
+# --------------------------------------------------------------------------
+# Society simulation — SHARED bays, a resident pool and a waiting queue
+# --------------------------------------------------------------------------
+# The four bays are shared infrastructure: any resident's car can use any
+# bay. Each bay's charge point is simulated server-side but speaks genuine
+# OCPP 1.6J over a loopback WebSocket to this very CSMS, so its frames,
+# wallet billing and observer broadcasts are identical to a real charger
+# (or the raw test client) connecting from outside. A traffic engine on a
+# simulation clock moves cars gate -> bay, gate -> parking (queue) ->
+# bay -> parking -> gate. All world state lives here, server-side, and a
+# full snapshot is sent to every observer when it joins.
+
+WORLD = None          # SimWorld, created in main()
+
+
+def _taper_power_w(soc: float) -> float:
+    """Charge power profile: full 7.4 kW until 80% SoC, then tapering."""
+    if soc < 80.0:
+        return 7400.0
+    return 7400.0 * max(0.35, 1.0 - (soc - 80.0) / 20.0 * 0.65)
+
+
+class SimChargePoint:
+    """One shared bay's charge point (loopback OCPP client)."""
+
+    def __init__(self, world, bay_id: str, base_url: str, register_seed: int):
+        self.world = world
+        self.id = bay_id
+        self.url = f"{base_url}/{bay_id}"
+        self.ws = None
+        self.pending: dict = {}
+        self.seq = 0
+        self.register = float(register_seed)
+        self.tx_id = None
+        self.stop_requested = False
+        self.connected = False
+        self._send_lock = asyncio.Lock()
+
+    # -- plumbing -------------------------------------------------------
+    async def run_forever(self) -> None:
+        while True:
+            try:
+                await self._connect_and_run()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log(f"SIMCP:{self.id}", f"loop error: {exc!r}; retry in 3s")
+            self.connected = False
+            self.ws = None
+            await asyncio.sleep(3)
+
+    async def _connect_and_run(self) -> None:
+        async with ws_connect(self.url, subprotocols=["ocpp1.6"]) as ws:
+            self.ws = ws
+            self.connected = True
+            reader = asyncio.create_task(self._reader())
+            heartbeat = asyncio.create_task(self._heartbeat_loop())
+            try:
+                await self.call("BootNotification", {
+                    "chargePointVendor": "Simplecharge",
+                    "chargePointModel": "SocietyWallbox 7.4",
+                    "chargePointSerialNumber": f"SN-{self.id}",
+                    "firmwareVersion": "2.1.0",
+                })
+                await self._status("Available")
+                await reader          # until the socket closes
+            finally:
+                reader.cancel()
+                heartbeat.cancel()
+
+    async def _reader(self) -> None:
+        async for raw in self.ws:
+            try:
+                frame = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(frame, list) or len(frame) < 2:
+                continue
+            if frame[0] in (3, 4):
+                future = self.pending.pop(frame[1], None)
+                if future is not None and not future.done():
+                    future.set_result(frame[2] if len(frame) > 2 else {})
+            elif frame[0] == 2 and len(frame) >= 4:
+                await self._handle_server_call(frame[1], frame[2],
+                                               frame[3] or {})
+
+    async def _handle_server_call(self, msg_id, action, payload) -> None:
+        if action == "RemoteStopTransaction":
+            self.stop_requested = True
+            await self._reply(msg_id, {"status": "Accepted"})
+        elif action == "RemoteStartTransaction":
+            await self._reply(msg_id, {"status": "Accepted"})
+            asyncio.create_task(
+                self.world.remote_start(self.id, payload.get("idTag")))
+        elif action in ("Reset", "UnlockConnector", "ChangeAvailability",
+                        "TriggerMessage"):
+            if action == "Reset":
+                self.stop_requested = True
+            await self._reply(msg_id, {"status": "Accepted"})
+        else:
+            await self._send_raw(json.dumps(
+                [4, msg_id, "NotImplemented",
+                 f"Action {action} not implemented by this charge point", {}]))
+
+    async def _heartbeat_loop(self) -> None:
+        while True:
+            await asyncio.sleep(25)
+            try:
+                await self.call("Heartbeat", {})
+            except Exception:
+                return
+
+    async def _send_raw(self, raw: str) -> None:
+        async with self._send_lock:
+            await self.ws.send(raw)
+
+    async def _reply(self, msg_id, result: dict) -> None:
+        await self._send_raw(json.dumps([3, msg_id, result]))
+
+    async def call(self, action: str, payload: dict, timeout: float = 15.0):
+        self.seq += 1
+        msg_id = f"sim-{self.id}-{self.seq}"
+        frame = json.dumps([2, msg_id, action, payload])
+        future = asyncio.get_running_loop().create_future()
+        self.pending[msg_id] = future
+        await self._send_raw(frame)
+        try:
+            return await asyncio.wait_for(future, timeout)
+        finally:
+            self.pending.pop(msg_id, None)
+
+    async def _status(self, status: str) -> None:
+        await self.call("StatusNotification", {
+            "connectorId": 1, "errorCode": "NoError", "status": status,
+            "timestamp": self.world.sim_iso(),
+        })
+
+    # -- one charging session for one car -------------------------------
+    async def run_session(self, car: dict) -> None:
+        world = self.world
+        gen = world.generation
+        tag = car["tag"]
+        self.stop_requested = False
+        try:
+            await self._status("Preparing")
+            auth = await self.call("Authorize", {"idTag": tag})
+            if (auth or {}).get("idTagInfo", {}).get("status") != "Accepted":
+                log(f"SIMCP:{self.id}",
+                    f"Authorize {tag} not accepted — session aborted")
+                return
+            meter_start = int(round(self.register))
+            self.register = float(meter_start)
+            start = await self.call("StartTransaction", {
+                "connectorId": 1, "idTag": tag, "meterStart": meter_start,
+                "timestamp": world.sim_iso(),
+            })
+            self.tx_id = (start or {}).get("transactionId")
+            await self._status("Charging")
+            await world.on_session_started(self.id, car, gen)
+            last = time.monotonic()
+            while not self.stop_requested:
+                await asyncio.sleep(0.5)
+                now = time.monotonic()
+                dt_sim_s = (now - last) * world.speed
+                last = now
+                power = _taper_power_w(car["soc"])
+                wh = power * dt_sim_s / 3600.0
+                self.register += wh
+                car["soc"] = min(
+                    100.0, car["soc"] + wh / (car["battery_kwh"] * 10.0))
+                await self.call("MeterValues", {
+                    "connectorId": 1, "transactionId": self.tx_id,
+                    "meterValue": [{
+                        "timestamp": world.sim_iso(),
+                        "sampledValue": [
+                            {"value": f"{self.register:.1f}",
+                             "measurand": "Energy.Active.Import.Register",
+                             "unit": "Wh"},
+                            {"value": f"{power:.0f}",
+                             "measurand": "Power.Active.Import",
+                             "unit": "W"},
+                            {"value": f"{car['soc']:.1f}",
+                             "measurand": "SoC", "unit": "Percent"},
+                        ],
+                    }],
+                })
+                if car["soc"] >= car["target_soc"]:
+                    break
+            meter_stop = int(round(self.register))
+            self.register = float(meter_stop)
+            await self.call("StopTransaction", {
+                "transactionId": self.tx_id, "meterStop": meter_stop,
+                "timestamp": world.sim_iso(),
+                "reason": "Remote" if self.stop_requested else "Local",
+            })
+            self.tx_id = None
+            await self._status("Finishing")
+            await asyncio.sleep(0.8)
+            await self._status("Available")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            log(f"SIMCP:{self.id}", f"session error: {exc!r}")
+            self.tx_id = None
+        finally:
+            await world.on_session_finished(self.id, car, gen)
+
+
+class SimWorld:
+    """Cars, shared bays, parking, the queue and the traffic engine."""
+
+    SPEEDS = (1, 3, 10, 30)
+
+    def __init__(self, base_url: str):
+        self.speed = 1
+        self.playing = False
+        self.now_ms = time.time() * 1000.0
+        self._last_tick = time.monotonic()
+        self._last_clock_broadcast = 0.0
+        self.generation = 0
+        self.cars = {tag: self._fresh_car(tag) for tag in RESIDENTS}
+        self.queue: list = []
+        self.bays = {bay: {"car": None, "phase": "free"} for bay in SIM_BAYS}
+        self.cps = {
+            bay: SimChargePoint(self, bay, base_url,
+                                100000 + i * 13777 + random.randint(0, 4000))
+            for i, bay in enumerate(SIM_BAYS)
+        }
+        self.next_arrival_ms = None
+
+    @staticmethod
+    def _fresh_car(tag: str) -> dict:
+        return {"tag": tag, "state": "away", "spot": None, "bay": None,
+                "soc": 0.0, "target_soc": 90.0, "battery_kwh": 30.0,
+                "dwell_until": None}
+
+    # -- clock ------------------------------------------------------------
+    def sim_datetime(self) -> datetime:
+        return datetime.fromtimestamp(self.now_ms / 1000.0)
+
+    def sim_iso(self) -> str:
+        return self.sim_datetime().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def sim_clock_text(self) -> str:
+        return self.sim_datetime().strftime("%H:%M:%S")
+
+    def sim_band(self):
+        return tariff_band(self.sim_datetime().hour)
+
+    # -- snapshot ---------------------------------------------------------
+    def _session_view(self, cp_id: str):
+        for tx_id, s in sessions.items():
+            if s["cp_id"] == cp_id:
+                return {
+                    "transactionId": tx_id, "idTag": s["id_tag"],
+                    "kwh": round((s["register"] - s["meter_start"]) / 1000.0, 3),
+                    "powerW": round(s["power_w"]),
+                    "soc": (round(s["soc"], 1)
+                            if s["soc"] is not None else None),
+                    "costSoFar": round(
+                        sum(b["cost"] for b in s["bands"].values()), 2),
+                }
+        return None
+
+    def snapshot(self) -> dict:
+        key, label, rate = self.sim_band()
+        return {
+            "event": "world",
+            "sim": {"nowMs": int(self.now_ms), "speed": self.speed,
+                    "playing": self.playing, "clock": self.sim_clock_text(),
+                    "band": {"key": key, "label": label, "rate": rate}},
+            "residents": [
+                {"tag": tag, "name": r["name"], "flat": r["flat"],
+                 "color": r["color"], "balance": WALLETS[tag]}
+                for tag, r in RESIDENTS.items()
+            ],
+            "cars": [
+                {"tag": c["tag"], "state": c["state"], "spot": c["spot"],
+                 "bay": c["bay"], "soc": round(c["soc"], 1),
+                 "targetSoc": round(c["target_soc"], 1),
+                 "queuePos": (self.queue.index(c["tag"]) + 1
+                              if c["tag"] in self.queue else None)}
+                for c in self.cars.values()
+            ],
+            "bays": [
+                {"cpId": bay, "phase": self.bays[bay]["phase"],
+                 "car": self.bays[bay]["car"],
+                 "status": connector_state.get(bay, {}).get(
+                     "status", "Offline"),
+                 "session": self._session_view(bay)}
+                for bay in SIM_BAYS
+            ],
+            "queue": list(self.queue),
+            "ledger": dict(LEDGER),
+            "payments": list(PAYMENTS),
+        }
+
+    async def broadcast_world(self) -> None:
+        await broadcast(self.snapshot())
+
+    async def sim_event(self, kind: str, text: str, **fields) -> None:
+        log("SIM", text)
+        await broadcast({"event": "sim_event", "kind": kind,
+                         "text": text, **fields})
+
+    # -- helpers ------------------------------------------------------------
+    def _free_spot(self):
+        used = {c["spot"] for c in self.cars.values()
+                if c["spot"] is not None}
+        for i in range(PARKING_SPOTS):
+            if i not in used:
+                return i
+        return None
+
+    def _free_bay(self):
+        for bay in SIM_BAYS:
+            if self.bays[bay]["car"] is None:
+                return bay
+        return None
+
+    @staticmethod
+    def _who(tag: str) -> str:
+        r = RESIDENTS[tag]
+        return f"{r['name']} ({r['flat']})"
+
+    # -- bay assignment / queue ---------------------------------------------
+    async def assign_bay(self, bay_id: str, car: dict,
+                         from_queue: bool = False) -> None:
+        if car["tag"] in self.queue:
+            self.queue.remove(car["tag"])
+        car["spot"] = None
+        car["state"] = "charging"
+        car["bay"] = bay_id
+        car["dwell_until"] = None
+        self.bays[bay_id]["car"] = car["tag"]
+        self.bays[bay_id]["phase"] = "starting"
+        if from_queue:
+            await self.sim_event(
+                "dequeue",
+                f"{self._who(car['tag'])} waited their turn — "
+                f"now plugging into {bay_id}",
+                tag=car["tag"], bay=bay_id)
+        else:
+            await self.sim_event(
+                "charge_start",
+                f"{self._who(car['tag'])} plugged into {bay_id} "
+                f"({car['soc']:.0f}% → {car['target_soc']:.0f}%)",
+                tag=car["tag"], bay=bay_id)
+        asyncio.create_task(self.cps[bay_id].run_session(car))
+        await self.broadcast_world()
+
+    async def try_advance_queue(self) -> None:
+        while self.queue:
+            bay_id = self._free_bay()
+            if bay_id is None:
+                return
+            car = self.cars[self.queue[0]]
+            await self.assign_bay(bay_id, car, from_queue=True)
+
+    async def on_session_started(self, bay_id: str, car: dict,
+                                 gen: int) -> None:
+        if gen != self.generation:
+            return
+        self.bays[bay_id]["phase"] = "charging"
+        await self.broadcast_world()
+
+    async def on_session_finished(self, bay_id: str, car: dict,
+                                  gen: int) -> None:
+        if gen != self.generation:
+            return                      # a reset already placed this car
+        if self.bays[bay_id]["car"] == car["tag"]:
+            self.bays[bay_id]["car"] = None
+            self.bays[bay_id]["phase"] = "free"
+        if car["bay"] == bay_id:
+            car["bay"] = None
+            spot = self._free_spot()
+            if spot is not None:
+                car["spot"] = spot
+                car["state"] = "parked"
+                car["dwell_until"] = (
+                    self.now_ms + random.uniform(25, 100) * 60000)
+                await self.sim_event(
+                    "charge_done",
+                    f"{self._who(car['tag'])} finished at {bay_id} — "
+                    f"moved to parking P{spot + 1}",
+                    tag=car["tag"], bay=bay_id, spot=spot)
+            else:
+                car["state"] = "away"
+                await self.sim_event(
+                    "charge_done",
+                    f"{self._who(car['tag'])} finished at {bay_id} and left "
+                    f"(parking full)", tag=car["tag"], bay=bay_id)
+        await self.try_advance_queue()
+        await self.broadcast_world()
+
+    # -- arrivals -------------------------------------------------------------
+    async def arrive(self, tag: str, wants_charge: bool,
+                     direct_bay: str = None) -> None:
+        car = self.cars[tag]
+        car["battery_kwh"] = round(random.uniform(24, 36), 1)
+        if wants_charge:
+            car["soc"] = round(random.uniform(55, 80), 1)
+            car["target_soc"] = round(random.uniform(86, 93), 1)
+        else:
+            car["soc"] = round(random.uniform(30, 85), 1)
+            car["target_soc"] = car["soc"]
+        await self.sim_event(
+            "arrive",
+            f"{self._who(tag)} arrived at the gate"
+            + (" looking to charge" if wants_charge else " (just home)"),
+            tag=tag)
+        if wants_charge:
+            bay_id = None
+            if direct_bay and self.bays[direct_bay]["car"] is None:
+                bay_id = direct_bay
+            elif not self.queue:
+                bay_id = self._free_bay()
+            if bay_id is not None:
+                await self.assign_bay(bay_id, car)
+                return
+            spot = self._free_spot()
+            if spot is None:
+                car["state"] = "away"
+                await self.sim_event(
+                    "note", f"{self._who(tag)} found parking full and "
+                    f"drove on", tag=tag)
+                await self.broadcast_world()
+                return
+            car["spot"] = spot
+            car["state"] = "waiting"
+            self.queue.append(tag)
+            await self.sim_event(
+                "wait",
+                f"all bays busy — {self._who(tag)} parked in "
+                f"P{spot + 1} and joined the queue "
+                f"(#{len(self.queue)} in line)",
+                tag=tag, spot=spot, queuePos=len(self.queue))
+            await self.broadcast_world()
+            return
+        spot = self._free_spot()
+        if spot is None:
+            car["state"] = "away"
+            await self.broadcast_world()
+            return
+        car["spot"] = spot
+        car["state"] = "parked"
+        car["dwell_until"] = self.now_ms + random.uniform(30, 120) * 60000
+        await self.sim_event(
+            "park", f"{self._who(tag)} parked in P{spot + 1}",
+            tag=tag, spot=spot)
+        await self.broadcast_world()
+
+    # -- traffic engine -------------------------------------------------------
+    async def tick_loop(self) -> None:
+        while True:
+            await asyncio.sleep(0.25)
+            now_real = time.monotonic()
+            dt = now_real - self._last_tick
+            self._last_tick = now_real
+            if dt > 0:
+                self.now_ms += dt * 1000.0 * self.speed
+            if self.playing:
+                if self.next_arrival_ms is None:
+                    self.next_arrival_ms = (
+                        self.now_ms + random.uniform(4, 12) * 60000)
+                if self.now_ms >= self.next_arrival_ms:
+                    self.next_arrival_ms = (
+                        self.now_ms + random.uniform(4, 12) * 60000)
+                    away = [t for t, c in self.cars.items()
+                            if c["state"] == "away"]
+                    if away:
+                        await self.arrive(random.choice(away),
+                                          wants_charge=random.random() < 0.8)
+            for car in list(self.cars.values()):
+                if (car["state"] == "parked"
+                        and car["dwell_until"] is not None
+                        and self.now_ms >= car["dwell_until"]):
+                    car["state"] = "away"
+                    car["spot"] = None
+                    car["dwell_until"] = None
+                    await self.sim_event(
+                        "leave", f"{self._who(car['tag'])} left the building",
+                        tag=car["tag"])
+                    await self.broadcast_world()
+            if now_real - self._last_clock_broadcast >= 2.0:
+                self._last_clock_broadcast = now_real
+                await broadcast({"event": "sim",
+                                 "nowMs": int(self.now_ms),
+                                 "speed": self.speed,
+                                 "playing": self.playing})
+                # Periodic full snapshot too: session energy / SoC only
+                # change via MeterValues, which carry no world broadcast,
+                # so without this the scene would freeze mid-session.
+                await self.broadcast_world()
+
+    # -- manual + remote controls ---------------------------------------------
+    async def plug_in(self, bay_id: str) -> None:
+        if bay_id not in self.bays:
+            return
+        if self.bays[bay_id]["car"] is not None:
+            await self.sim_event(
+                "note", f"{bay_id} is already in use", bay=bay_id)
+            return
+        if self.queue:
+            car = self.cars[self.queue[0]]
+            await self.assign_bay(bay_id, car, from_queue=True)
+            return
+        away = [t for t, c in self.cars.items() if c["state"] == "away"]
+        if away:
+            await self.arrive(random.choice(away), True,
+                              direct_bay=bay_id)
+            return
+        parked = [c for c in self.cars.values() if c["state"] == "parked"]
+        if parked:
+            car = random.choice(parked)
+            car["target_soc"] = round(random.uniform(86, 93), 1)
+            if car["soc"] >= car["target_soc"]:
+                car["target_soc"] = min(98.0, car["soc"] + 10)
+            await self.sim_event(
+                "summon",
+                f"{self._who(car['tag'])} called over from parking "
+                f"to {bay_id}", tag=car["tag"], bay=bay_id)
+            await self.assign_bay(bay_id, car)
+            return
+        await self.sim_event(
+            "note", "no car available to bring in", bay=bay_id)
+
+    async def remote_start(self, bay_id: str, id_tag: str = None) -> None:
+        if self.bays[bay_id]["car"] is not None:
+            return
+        if id_tag and id_tag in self.cars:
+            car = self.cars[id_tag]
+            if car["state"] == "waiting":
+                await self.assign_bay(bay_id, car, from_queue=True)
+                return
+            if car["state"] == "away":
+                await self.arrive(id_tag, True, direct_bay=bay_id)
+                return
+            if car["state"] == "parked":
+                car["target_soc"] = round(random.uniform(86, 93), 1)
+                if car["soc"] >= car["target_soc"]:
+                    car["target_soc"] = min(98.0, car["soc"] + 10)
+                await self.assign_bay(bay_id, car)
+                return
+        await self.plug_in(bay_id)
+
+    async def reset(self) -> None:
+        self.generation += 1
+        for cp in self.cps.values():
+            cp.stop_requested = True
+        self.queue.clear()
+        self.cars = {tag: self._fresh_car(tag) for tag in RESIDENTS}
+        self.bays = {bay: {"car": None, "phase": "free"} for bay in SIM_BAYS}
+        self.now_ms = time.time() * 1000.0
+        self.next_arrival_ms = None
+        LEDGER.update({"sessions": 0, "kwh": 0.0, "revenue": 0.0})
+        PAYMENTS.clear()
+        await self.sim_event("reset", "day reset — cars home, queue cleared")
+        await broadcast_wallets()
+        await self.broadcast_world()
+
+    async def handle_sim_control(self, ctrl: dict) -> None:
+        action = ctrl.get("control", "")
+        bay_id = ctrl.get("cpId", "")
+        if action == "SimTraffic":
+            self.playing = bool(ctrl.get("playing"))
+            await self.sim_event(
+                "note", "traffic " + ("playing" if self.playing else "paused"))
+        elif action == "SimSpeed":
+            try:
+                n = int(ctrl.get("speed", 1))
+            except (TypeError, ValueError):
+                n = 1
+            if n in self.SPEEDS:
+                self.speed = n
+                await self.sim_event("note", f"simulation speed {n}×")
+        elif action == "SimPlugIn":
+            await self.plug_in(bay_id)
+        elif action == "SimUnplug":
+            cp = self.cps.get(bay_id)
+            if cp is not None and self.bays[bay_id]["car"] is not None:
+                cp.stop_requested = True
+                await self.sim_event(
+                    "note", f"unplug requested at {bay_id}", bay=bay_id)
+        elif action == "SimReset":
+            await self.reset()
+        else:
+            return
+        await broadcast({"event": "control_result", "cpId": bay_id,
+                         "control": action,
+                         "result": {"status": "Accepted"}})
+        await self.broadcast_world()
+
+
+def start_world(port: int) -> None:
+    global WORLD
+    WORLD = SimWorld(f"ws://127.0.0.1:{port}")
+    for cp in WORLD.cps.values():
+        asyncio.create_task(cp.run_forever())
+    asyncio.create_task(WORLD.tick_loop())
+    log("SIM", f"society world live: {len(RESIDENTS)} residents, "
+               f"{len(SIM_BAYS)} shared bays, {PARKING_SPOTS} parking spots")
 
 
 # --------------------------------------------------------------------------
@@ -491,6 +1153,10 @@ CONTROL_CALLS = {
 
 async def handle_control(ctrl: dict) -> None:
     action = ctrl.get("control", "")
+    if action.startswith("Sim"):
+        if WORLD is not None:
+            await WORLD.handle_sim_control(ctrl)
+        return
     cp_id = ctrl.get("cpId", "")
     conn = connections.get(cp_id)
     if conn is None:
@@ -527,6 +1193,11 @@ async def on_observer(websocket) -> None:
         state = connector_state[cp_id]
         await websocket.send(json.dumps({"event": "state",
                                          "cpId": cp_id, **state}))
+    if WORLD is not None:
+        # Full society snapshot: cars, queue, bays, ledger, payments —
+        # a rejoining observer lands in exactly the world everyone
+        # else is watching, mid-session included.
+        await websocket.send(json.dumps(WORLD.snapshot()))
     try:
         async for raw in websocket:
             try:
@@ -619,12 +1290,14 @@ async def main() -> None:
                              select_subprotocol=_select_subprotocol,
                              process_request=lambda c, r: _single_port_http(c, r, port))
         log("CSMS", f"SINGLE-PORT mode on {port}: http://0.0.0.0:{port}/visualizer.html + ws://0.0.0.0:{port}/<charge_point_id> (OCPP 1.6J) + /observe")
+        start_world(port)
         await server.wait_closed()
         return
     start_http_server()
     server = await serve(on_connect, "0.0.0.0", WS_PORT,
                          subprotocols=["ocpp1.6"],
                          select_subprotocol=_select_subprotocol)
+    start_world(WS_PORT)
     log("CSMS", f"LISTENING ws://0.0.0.0:{WS_PORT}/<charge_point_id> (OCPP 1.6J)")
     log("CSMS", f"LISTENING ws://0.0.0.0:{WS_PORT}/observe (observer/control)")
     log("CSMS", f"SERVING   http://0.0.0.0:{HTTP_PORT}/visualizer.html (static)")

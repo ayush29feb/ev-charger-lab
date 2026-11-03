@@ -17,26 +17,41 @@ here speaks **genuine OCPP 1.6J over a real WebSocket**:
   RemoteStopTransaction, Reset, UnlockConnector, ChangeAvailability,
   TriggerMessage). Every raw frame is broadcast to observers verbatim.
 - **`visualizer.html`** — a housing-society simulator on top of the real
-  server: an animated top-down map (building + rooftop solar, load-manager
-  and transformer boxes, six bays) whose cars drive in, plug in, charge and
-  leave. The six bays are **real OCPP clients written in JavaScript**: each
-  opens its own WebSocket to the CSMS and sends actual
-  `[2, id, "BootNotification", {...}]` frames, waits for `[3, ...]`
-  replies, runs sessions, and answers server-initiated calls. A traffic
-  engine (Play + 1×/3×/10×/30×) runs a simulation clock that drives the
-  tariff band, the modelled solar curve and the meter timestamps, and
-  generates resident arrivals that run genuine sessions through the
-  server. The log shows the exact wire strings relayed by the CSMS
+  server, built on a **shared-bay model**: a pool of **ten residents**,
+  each with their own wallet, and **four shared charging bays** — any car
+  can use any bay. The whole world lives **server-side** in `csms_live.py`:
+  each bay's charge point is a loopback OCPP client of the same CSMS
+  (genuine `[2, id, "BootNotification", {...}]` frames, wallet Authorize,
+  meter values stamped with the simulation clock), and a traffic engine
+  (Play + 1×/3×/10×/30×) generates arrivals. A car that finds a free bay
+  plugs in and runs a real session billed to **its owner's** wallet; if
+  all bays are busy it parks in **normal parking and queues**, and when a
+  session ends the longest-waiting car takes the freed bay, then moves
+  back to parking when done. The page is a pure observer + remote
+  control: it renders the server's `{"event": "world", ...}` snapshots
+  (cars, queue, sessions, ledger, payments) on an animated top-down map
+  (building + rooftop solar, load-manager and transformer boxes, four
+  bays, a ten-spot parking row, gate), and steers the world with `Sim*`
+  controls (`SimPlugIn` pulls the next waiting car — or a new arrival —
+  into a free bay; `SimUnplug` ends a session). Everyone who opens the
+  page shares one world, and a full snapshot on join restores it
+  mid-session. The log shows the exact wire strings relayed by the CSMS
   observer feed — nothing is re-enacted.
-- **`test_observer.py` / `test_raw_cp.py`** — headless checks: a raw Python
-  charge point runs a full session while an observer client asserts the frames
-  arrive on the feed. `test_raw_cp.py` expects the ToU "Standard" band
-  (₹14/kWh) for its 07:40 UTC timestamps and asserts the summary's per-band
-  breakdown; URLs can be overridden with `CP_URL` / `OBSERVE_URL`.
+- **`test_observer.py` / `test_raw_cp.py` / `test_sim_world.py`** —
+  headless checks: a raw Python charge point runs a full session while an
+  observer client asserts the frames arrive on the feed. `test_raw_cp.py`
+  expects the ToU "Standard" band (₹14/kWh) for its 07:40 UTC timestamps
+  and asserts the summary's per-band breakdown; URLs can be overridden
+  with `CP_URL` / `OBSERVE_URL`. `test_sim_world.py` plays traffic at
+  30× with two observers and proves the queue forms and rotates, sessions
+  bill the car owner's wallet, a rejoining observer restores an
+  in-progress session from the snapshot, and both observers hold
+  identical world state (`OBSERVE_URL` override).
 
-Demo tags: `DEMO1234` (wallet ₹500), `AYUSH001` (₹250), `PRIYA002` (₹300),
-`RAHUL003` (₹150), `MEERA004` (₹400), `ARJUN005` (₹350) are accepted;
-anything else (try `GUEST009`) is rejected as Invalid.
+Demo tags (residents): `DEMO1234` ( ₹500), `AYUSH001` (₹250),
+`PRIYA002` (₹300), `RAHUL003` (₹150), `MEERA004` (₹400), `ARJUN005` (₹350),
+`KAVYA006` (₹300), `ROHAN007` (₹275), `SNEHA008` (₹325), `VIKRAM009` (₹200)
+are accepted; anything else (try `GUEST009`) is rejected as Invalid.
 
 ## Run locally
 
