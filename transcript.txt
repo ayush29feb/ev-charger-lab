@@ -1,0 +1,88 @@
+2026-11-03 07:06:41.732 [CSMS] LISTENING on ws://localhost:9000/<charge_point_id> (OCPP 1.6J)
+2026-11-03 07:06:54.536 [CSMS] CONNECT charge point 'SIM_001' from ('127.0.0.1', 50046)
+2026-11-03 07:06:54.539 [CP:SIM_001] SEND [2,"8d60214d-e2b1-4812-8f18-e0253faea076","BootNotification",{"chargePointModel":"SimWallbox 7.4","chargePointVendor":"MuseLab","firmwareVersion":"1.0.0"}]
+2026-11-03 07:06:54.539 [CSMS:SIM_001] RECV [2,"8d60214d-e2b1-4812-8f18-e0253faea076","BootNotification",{"chargePointModel":"SimWallbox 7.4","chargePointVendor":"MuseLab","firmwareVersion":"1.0.0"}]
+2026-11-03 07:06:54.543 [CSMS:SIM_001] BOOT MuseLab SimWallbox 7.4 firmware=1.0.0 -> Accepted, heartbeat 30s
+2026-11-03 07:06:54.544 [CSMS:SIM_001] SEND [3,"8d60214d-e2b1-4812-8f18-e0253faea076",{"currentTime":"2026-11-03T07:06:54Z","interval":30,"status":"Accepted"}]
+2026-11-03 07:06:54.545 [CP:SIM_001] RECV [3,"8d60214d-e2b1-4812-8f18-e0253faea076",{"currentTime":"2026-11-03T07:06:54Z","interval":30,"status":"Accepted"}]
+2026-11-03 07:06:54.546 [CP:SIM_001] BOOT accepted, heartbeat interval=30s
+2026-11-03 07:06:54.546 [CP:SIM_001] SEND [2,"4af911d5-5fb6-44c1-bc6c-c336c30b0c00","Authorize",{"idTag":"DEMO1234"}]
+2026-11-03 07:06:54.547 [CSMS:SIM_001] RECV [2,"4af911d5-5fb6-44c1-bc6c-c336c30b0c00","Authorize",{"idTag":"DEMO1234"}]
+2026-11-03 07:06:54.547 [CSMS:SIM_001] AUTHORIZE idTag=DEMO1234 -> Accepted
+2026-11-03 07:06:54.548 [CSMS:SIM_001] SEND [3,"4af911d5-5fb6-44c1-bc6c-c336c30b0c00",{"idTagInfo":{"status":"Accepted"}}]
+2026-11-03 07:06:54.549 [CP:SIM_001] RECV [3,"4af911d5-5fb6-44c1-bc6c-c336c30b0c00",{"idTagInfo":{"status":"Accepted"}}]
+2026-11-03 07:06:54.549 [CP:SIM_001] AUTHORIZE idTag=DEMO1234 -> Accepted
+2026-11-03 07:06:54.550 [CP:SIM_001] SEND [2,"c765e3d5-272b-4174-a1b1-0aaac0844431","StartTransaction",{"connectorId":1,"idTag":"DEMO1234","meterStart":104520,"timestamp":"2026-11-03T07:06:54Z"}]
+2026-11-03 07:06:54.551 [CSMS:SIM_001] RECV [2,"c765e3d5-272b-4174-a1b1-0aaac0844431","StartTransaction",{"connectorId":1,"idTag":"DEMO1234","meterStart":104520,"timestamp":"2026-11-03T07:06:54Z"}]
+2026-11-03 07:06:54.552 [CSMS:SIM_001] START tx=1 connector=1 idTag=DEMO1234 meterStart=104520 Wh
+2026-11-03 07:06:54.552 [CSMS:SIM_001] SEND [3,"c765e3d5-272b-4174-a1b1-0aaac0844431",{"transactionId":1,"idTagInfo":{"status":"Accepted"}}]
+2026-11-03 07:06:54.553 [CP:SIM_001] RECV [3,"c765e3d5-272b-4174-a1b1-0aaac0844431",{"transactionId":1,"idTagInfo":{"status":"Accepted"}}]
+2026-11-03 07:06:54.554 [CP:SIM_001] START transaction_id=1 meterStart=104520 Wh
+2026-11-03 07:06:57.561 [CP:SIM_001] SEND [2,"4256cbec-39c3-4838-8b7e-6213a471d0d6","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:06:57Z","sampledValue":[{"value":"104526.2","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7380","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:06:57.561 [CSMS:SIM_001] RECV [2,"4256cbec-39c3-4838-8b7e-6213a471d0d6","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:06:57Z","sampledValue":[{"value":"104526.2","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7380","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:06:57.563 [CSMS:SIM_001] METER tx=1 register=104526.2 Wh power=7380 W current=32.1 A -> 0.006 kWh so far
+2026-11-03 07:06:57.563 [CSMS:SIM_001] SEND [3,"4256cbec-39c3-4838-8b7e-6213a471d0d6",{}]
+2026-11-03 07:06:57.564 [CP:SIM_001] RECV [3,"4256cbec-39c3-4838-8b7e-6213a471d0d6",{}]
+2026-11-03 07:06:57.565 [CP:SIM_001] METER sample 1/10 register=104526.2 Wh (0.006 kWh delivered)
+2026-11-03 07:07:00.569 [CP:SIM_001] SEND [2,"eb39266c-a9ca-442b-9143-062f63385971","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:00Z","sampledValue":[{"value":"104532.3","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7353","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:00.570 [CSMS:SIM_001] RECV [2,"eb39266c-a9ca-442b-9143-062f63385971","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:00Z","sampledValue":[{"value":"104532.3","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7353","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:00.571 [CSMS:SIM_001] METER tx=1 register=104532.3 Wh power=7353 W current=32.0 A -> 0.012 kWh so far
+2026-11-03 07:07:00.571 [CSMS:SIM_001] SEND [3,"eb39266c-a9ca-442b-9143-062f63385971",{}]
+2026-11-03 07:07:00.571 [CP:SIM_001] RECV [3,"eb39266c-a9ca-442b-9143-062f63385971",{}]
+2026-11-03 07:07:00.572 [CP:SIM_001] METER sample 2/10 register=104532.3 Wh (0.012 kWh delivered)
+2026-11-03 07:07:03.576 [CP:SIM_001] SEND [2,"c5b7da8a-9bd1-474c-ab1e-6043eebf8881","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:03Z","sampledValue":[{"value":"104538.4","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7372","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:03.577 [CSMS:SIM_001] RECV [2,"c5b7da8a-9bd1-474c-ab1e-6043eebf8881","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:03Z","sampledValue":[{"value":"104538.4","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7372","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:03.578 [CSMS:SIM_001] METER tx=1 register=104538.4 Wh power=7372 W current=32.1 A -> 0.018 kWh so far
+2026-11-03 07:07:03.578 [CSMS:SIM_001] SEND [3,"c5b7da8a-9bd1-474c-ab1e-6043eebf8881",{}]
+2026-11-03 07:07:03.579 [CP:SIM_001] RECV [3,"c5b7da8a-9bd1-474c-ab1e-6043eebf8881",{}]
+2026-11-03 07:07:03.579 [CP:SIM_001] METER sample 3/10 register=104538.4 Wh (0.018 kWh delivered)
+2026-11-03 07:07:06.583 [CP:SIM_001] SEND [2,"4440b8cd-0aea-4b1b-962e-00be0af3e84a","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:06Z","sampledValue":[{"value":"104544.6","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7456","measurand":"Power.Active.Import","unit":"W"},{"value":"32.4","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:06.583 [CSMS:SIM_001] RECV [2,"4440b8cd-0aea-4b1b-962e-00be0af3e84a","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:06Z","sampledValue":[{"value":"104544.6","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7456","measurand":"Power.Active.Import","unit":"W"},{"value":"32.4","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:06.584 [CSMS:SIM_001] METER tx=1 register=104544.6 Wh power=7456 W current=32.4 A -> 0.025 kWh so far
+2026-11-03 07:07:06.585 [CSMS:SIM_001] SEND [3,"4440b8cd-0aea-4b1b-962e-00be0af3e84a",{}]
+2026-11-03 07:07:06.585 [CP:SIM_001] RECV [3,"4440b8cd-0aea-4b1b-962e-00be0af3e84a",{}]
+2026-11-03 07:07:06.585 [CP:SIM_001] METER sample 4/10 register=104544.6 Wh (0.025 kWh delivered)
+2026-11-03 07:07:09.589 [CP:SIM_001] SEND [2,"35c48c93-c66c-4b03-af7a-a7da05d10c08","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:09Z","sampledValue":[{"value":"104550.8","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7375","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:09.589 [CSMS:SIM_001] RECV [2,"35c48c93-c66c-4b03-af7a-a7da05d10c08","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:09Z","sampledValue":[{"value":"104550.8","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7375","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:09.590 [CSMS:SIM_001] METER tx=1 register=104550.8 Wh power=7375 W current=32.1 A -> 0.031 kWh so far
+2026-11-03 07:07:09.591 [CSMS:SIM_001] SEND [3,"35c48c93-c66c-4b03-af7a-a7da05d10c08",{}]
+2026-11-03 07:07:09.591 [CP:SIM_001] RECV [3,"35c48c93-c66c-4b03-af7a-a7da05d10c08",{}]
+2026-11-03 07:07:09.592 [CP:SIM_001] METER sample 5/10 register=104550.8 Wh (0.031 kWh delivered)
+2026-11-03 07:07:12.596 [CP:SIM_001] SEND [2,"fcbb69d1-e46f-4e71-af63-1e4d013caa9b","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:12Z","sampledValue":[{"value":"104557.0","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7450","measurand":"Power.Active.Import","unit":"W"},{"value":"32.4","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:12.597 [CSMS:SIM_001] RECV [2,"fcbb69d1-e46f-4e71-af63-1e4d013caa9b","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:12Z","sampledValue":[{"value":"104557.0","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7450","measurand":"Power.Active.Import","unit":"W"},{"value":"32.4","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:12.598 [CSMS:SIM_001] METER tx=1 register=104557.0 Wh power=7450 W current=32.4 A -> 0.037 kWh so far
+2026-11-03 07:07:12.598 [CSMS:SIM_001] SEND [3,"fcbb69d1-e46f-4e71-af63-1e4d013caa9b",{}]
+2026-11-03 07:07:12.599 [CP:SIM_001] RECV [3,"fcbb69d1-e46f-4e71-af63-1e4d013caa9b",{}]
+2026-11-03 07:07:12.599 [CP:SIM_001] METER sample 6/10 register=104557.0 Wh (0.037 kWh delivered)
+2026-11-03 07:07:15.603 [CP:SIM_001] SEND [2,"1fe71d2e-897e-4e76-b596-4f2c0f21116f","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:15Z","sampledValue":[{"value":"104563.1","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7372","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:15.603 [CSMS:SIM_001] RECV [2,"1fe71d2e-897e-4e76-b596-4f2c0f21116f","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:15Z","sampledValue":[{"value":"104563.1","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7372","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:15.605 [CSMS:SIM_001] METER tx=1 register=104563.1 Wh power=7372 W current=32.1 A -> 0.043 kWh so far
+2026-11-03 07:07:15.605 [CSMS:SIM_001] SEND [3,"1fe71d2e-897e-4e76-b596-4f2c0f21116f",{}]
+2026-11-03 07:07:15.605 [CP:SIM_001] RECV [3,"1fe71d2e-897e-4e76-b596-4f2c0f21116f",{}]
+2026-11-03 07:07:15.606 [CP:SIM_001] METER sample 7/10 register=104563.1 Wh (0.043 kWh delivered)
+2026-11-03 07:07:18.610 [CP:SIM_001] SEND [2,"1744b58d-9b22-47b1-8520-ac7a989a72c9","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:18Z","sampledValue":[{"value":"104569.3","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7389","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:18.611 [CSMS:SIM_001] RECV [2,"1744b58d-9b22-47b1-8520-ac7a989a72c9","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:18Z","sampledValue":[{"value":"104569.3","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7389","measurand":"Power.Active.Import","unit":"W"},{"value":"32.1","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:18.612 [CSMS:SIM_001] METER tx=1 register=104569.3 Wh power=7389 W current=32.1 A -> 0.049 kWh so far
+2026-11-03 07:07:18.613 [CSMS:SIM_001] SEND [3,"1744b58d-9b22-47b1-8520-ac7a989a72c9",{}]
+2026-11-03 07:07:18.613 [CP:SIM_001] RECV [3,"1744b58d-9b22-47b1-8520-ac7a989a72c9",{}]
+2026-11-03 07:07:18.613 [CP:SIM_001] METER sample 8/10 register=104569.3 Wh (0.049 kWh delivered)
+2026-11-03 07:07:21.618 [CP:SIM_001] SEND [2,"639b4cb7-390b-4947-89d2-cd31e3da2857","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:21Z","sampledValue":[{"value":"104575.4","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7350","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:21.619 [CSMS:SIM_001] RECV [2,"639b4cb7-390b-4947-89d2-cd31e3da2857","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:21Z","sampledValue":[{"value":"104575.4","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7350","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:21.620 [CSMS:SIM_001] METER tx=1 register=104575.4 Wh power=7350 W current=32.0 A -> 0.055 kWh so far
+2026-11-03 07:07:21.621 [CSMS:SIM_001] SEND [3,"639b4cb7-390b-4947-89d2-cd31e3da2857",{}]
+2026-11-03 07:07:21.621 [CP:SIM_001] RECV [3,"639b4cb7-390b-4947-89d2-cd31e3da2857",{}]
+2026-11-03 07:07:21.622 [CP:SIM_001] METER sample 9/10 register=104575.4 Wh (0.055 kWh delivered)
+2026-11-03 07:07:24.626 [CP:SIM_001] SEND [2,"ff71bbb1-5838-4c8b-942a-f61d23860fd0","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:24Z","sampledValue":[{"value":"104581.5","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7351","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:24.626 [CSMS:SIM_001] RECV [2,"ff71bbb1-5838-4c8b-942a-f61d23860fd0","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-11-03T07:07:24Z","sampledValue":[{"value":"104581.5","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7351","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"},{"value":"230","measurand":"Voltage","unit":"V"}]}],"transactionId":1}]
+2026-11-03 07:07:24.627 [CSMS:SIM_001] METER tx=1 register=104581.5 Wh power=7351 W current=32.0 A -> 0.061 kWh so far
+2026-11-03 07:07:24.628 [CSMS:SIM_001] SEND [3,"ff71bbb1-5838-4c8b-942a-f61d23860fd0",{}]
+2026-11-03 07:07:24.628 [CP:SIM_001] RECV [3,"ff71bbb1-5838-4c8b-942a-f61d23860fd0",{}]
+2026-11-03 07:07:24.629 [CP:SIM_001] METER sample 10/10 register=104581.5 Wh (0.062 kWh delivered)
+2026-11-03 07:07:24.632 [CP:SIM_001] SEND [2,"15c1024e-dc33-43fe-9677-f26e3fc2a34d","StopTransaction",{"meterStop":104582,"timestamp":"2026-11-03T07:07:24Z","transactionId":1}]
+2026-11-03 07:07:24.633 [CSMS:SIM_001] RECV [2,"15c1024e-dc33-43fe-9677-f26e3fc2a34d","StopTransaction",{"meterStop":104582,"timestamp":"2026-11-03T07:07:24Z","transactionId":1}]
+2026-11-03 07:07:24.634 [CSMS:SIM_001] SESSION SUMMARY tx=1 meterStart=104520 Wh meterStop=104582 Wh total=0.062 kWh duration=30.1s rate=₹18/kWh cost=₹1.12
+2026-11-03 07:07:24.635 [CSMS:SIM_001] SEND [3,"15c1024e-dc33-43fe-9677-f26e3fc2a34d",{"idTagInfo":{"status":"Accepted"}}]
+2026-11-03 07:07:24.635 [CP:SIM_001] RECV [3,"15c1024e-dc33-43fe-9677-f26e3fc2a34d",{"idTagInfo":{"status":"Accepted"}}]
+2026-11-03 07:07:24.636 [CP:SIM_001] STOP tx=1 meterStop=104582 Wh total=0.062 kWh
+2026-11-03 07:07:24.637 [CP:SIM_001] SESSION COMPLETE
+2026-11-03 07:07:24.637 [CSMS] DISCONNECT charge point 'SIM_001'
