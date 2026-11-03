@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>EV Charger Lab — LIVE (real OCPP 1.6J)</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+         background: #0d1117; color: #e6edf3; }
+  header { padding: 10px 16px; border-bottom: 1px solid #30363d;
+           display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; }
+  header h1 { font-size: 17px; margin: 0; }
+  header .sub { color: #8b949e; font-size: 12px; }
+  .pill { font-size: 12px; padding: 2px 9px; border-radius: 20px; border: 1px solid #30363d; }
+  .pill.ok { color: #3fb950; border-color: #238636; }
+  .pill.bad { color: #f85149; border-color: #da3633; }
+  .totals { margin-left: auto; display: flex; gap: 16px; font-size: 13px; }
+  .totals b { color: #79c0ff; }
+  #wallets { padding: 6px 16px; border-bottom: 1px solid #30363d; font-size: 13px;
+             display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  #wallets .w b { color: #d2a8ff; }
+  main { display: grid; grid-template-columns: minmax(430px, 5fr) minmax(430px, 6fr);
+         gap: 0; min-height: 0; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  #lot { padding: 12px 16px; }
+  #lot h2, #termwrap h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
+                          color: #8b949e; margin: 2px 0 10px; }
+  .bays { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .bay { border: 1px solid #30363d; border-radius: 10px; padding: 10px 12px;
+         background: #161b22; position: relative; overflow: hidden; }
+  .bay .top { display: flex; justify-content: space-between; align-items: center; }
+  .bay .name { font-weight: 600; font-size: 14px; }
+  .chip { font-size: 11px; padding: 1px 8px; border-radius: 12px; background: #30363d; }
+  .chip.Available { background: #238636; } .chip.Charging { background: #1f6feb; }
+  .chip.Preparing { background: #9e6a03; } .chip.Finishing { background: #6e5494; }
+  .chip.Faulted { background: #da3633; } .chip.Unavailable, .chip.Offline { background: #57606a; }
+  .chip.Reserved { background: #8957e5; }
+  .carzone { height: 64px; display: flex; align-items: center; gap: 10px; }
+  .car { font-size: 40px; transform: translateX(-90px); opacity: 0;
+         transition: transform .8s ease, opacity .8s ease; }
+  .car.in { transform: translateX(0); opacity: 1; }
+  .cable { font-size: 20px; opacity: 0; } .cable.on { opacity: 1; }
+  .batt { flex: 1; }
+  .battbar { height: 10px; background: #30363d; border-radius: 5px; overflow: hidden; }
+  .battfill { height: 100%; width: 0%; background: #3fb950; transition: width .5s; }
+  .readouts { font-size: 12px; color: #c9d1d9; display: grid;
+              grid-template-columns: 1fr 1fr; gap: 2px 10px; margin-top: 4px; }
+  .readouts span b { color: #79c0ff; font-weight: 600; }
+  .srv { font-size: 11px; color: #8b949e; margin-top: 4px; }
+  .bay button { margin-top: 8px; }
+  button { background: #21262d; color: #e6edf3; border: 1px solid #30363d;
+           border-radius: 6px; padding: 5px 10px; font-size: 12.5px; cursor: pointer; }
+  button:hover:not(:disabled) { background: #30363d; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: #238636; border-color: #2ea043; }
+  #controls { padding: 10px 16px; border-top: 1px solid #30363d; display: flex;
+              flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+  #controls .group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  #controls .sep { width: 1px; height: 22px; background: #30363d; margin: 0 4px; }
+  select, input[type=text] { background: #0d1117; color: #e6edf3; border: 1px solid #30363d;
+                             border-radius: 6px; padding: 5px 8px; font-size: 12.5px; }
+  #termwrap { border-left: 1px solid #30363d; padding: 12px 16px; display: flex;
+              flex-direction: column; min-height: 300px; }
+  #terminal { flex: 1; overflow-y: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
+              font-size: 11.5px; line-height: 1.55; background: #010409; border: 1px solid #30363d;
+              border-radius: 8px; padding: 8px 10px; height: 62vh; }
+  #terminal .ln { white-space: pre-wrap; word-break: break-all; }
+  #terminal .dir-cp { color: #3fb950; font-weight: 600; }
+  #terminal .dir-csms { color: #79c0ff; font-weight: 600; }
+  #terminal .evt { color: #d2a8ff; }
+  #terminal .sum { color: #ffa657; font-weight: 600; }
+  #terminal .err { color: #f85149; }
+  .note { font-size: 12px; color: #8b949e; padding: 0 16px 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ EV Charger Lab — LIVE</h1>
+  <span class="sub">real OCPP 1.6J · Python CSMS on :9001 · browser charge points are genuine OCPP clients</span>
+  <span id="obsPill" class="pill bad">observer: connecting…</span>
+  <div class="totals">
+    <span>Energy <b id="tKwh">0.000 kWh</b></span>
+    <span>Revenue <b id="tRev">₹0.00</b></span>
+    <span>Sessions <b id="tSess">0</b></span>
+  </div>
+</header>
+<div id="wallets"><span style="color:#8b949e">Wallets (CSMS):</span></div>
+
+<main>
+  <section id="lot">
+    <h2>Charging lot — 4 × SimWallbox 7.4 (JS OCPP clients)</h2>
+    <div class="bays" id="bays"></div>
+  </section>
+  <section id="termwrap">
+    <h2>Wire terminal — actual frames from the CSMS observer feed</h2>
+    <div id="terminal"></div>
+  </section>
+</main>
+
+<div id="controls">
+  <div class="group">
+    <button class="primary" id="btnCar">🚗 Send a car in</button>
+  </div>
+  <div class="sep"></div>
+  <div class="group">
+    <span>Operator →</span>
+    <select id="opCp">
+      <option>SIM_001</option><option>SIM_002</option>
+      <option>SIM_003</option><option>SIM_004</option>
+    </select>
+    <input type="text" id="opTag" value="AYUSH001" size="10" title="idTag for remote start" />
+    <button data-op="RemoteStartTransaction">Remote start</button>
+    <button data-op="RemoteStopTransaction">Remote stop</button>
+    <button data-op="UnlockConnector">Unlock</button>
+    <button data-op="Reset">Reset</button>
+    <button data-op="Inoperative">Set inoperative</button>
+    <button data-op="Operative">Set operative</button>
+    <button data-op="TrigBoot">Trigger boot</button>
+    <button data-op="TrigMeter">Trigger meter values</button>
+  </div>
+</div>
+<p class="note">
+  Every frame in the terminal is the exact string that crossed a real WebSocket:
+  the four chargers above are JavaScript OCPP 1.6J clients connected to
+  <code>ws://&lt;host&gt;:9001/SIM_00N</code> (subprotocol <code>ocpp1.6</code>), and the
+  Python <code>csms_live.py</code> answers them. Operator buttons travel via the
+  <code>/observe</code> control channel and are forwarded by the CSMS as genuine
+  <code>[2, …]</code> CALLs. Tags DEMO1234 / AYUSH001 / PRIYA002 / RAHUL003 have
+  wallets; GUEST009 is rejected. Sessions bill at ₹18/kWh.
+</p>
+
+<script>
+"use strict";
+/* =====================================================================
+   EV Charger Lab — LIVE visualizer.
+   The four bays below are REAL OCPP 1.6J charge-point clients written in
+   JavaScript: each holds its own WebSocket to the Python CSMS and speaks
+   genuine [2,id,"Action",{...}] / [3,id,{...}] frames. The terminal is
+   fed by the CSMS /observe socket, which relays the exact wire strings —
+   nothing in the terminal is re-generated by this page.
+   ===================================================================== */
+
+var HOST = location.hostname || "localhost";
+var WS_BASE = (location.protocol === "https:" ? "wss://" : "ws://") + HOST + ":9001";
+var CP_IDS = ["SIM_001", "SIM_002", "SIM_003", "SIM_004"];
+var WALLET_TAGS = ["DEMO1234", "AYUSH001", "PRIYA002", "RAHUL003"];
+var TARIFF_INR = 18.0;
+var BATTERY_KWH = 40.0;
+var BASE_POWER_W = 7400.0;
+var VOLTAGE_V = 230.0;
+var METER_MS = 2000;
+
+function isoNow() { return new Date().toISOString().replace(/\.\d+Z$/, "Z"); }
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function rand(min, max) { return min + Math.random() * (max - min); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+/* ---------------- terminal + totals (observer feed) ---------------- */
+var termEl = document.getElementById("terminal");
+var totals = { kwh: 0, revenue: 0, sessions: 0 };
+
+function term(html, cls) {
+  var div = document.createElement("div");
+  div.className = "ln" + (cls ? " " + cls : "");
+  div.innerHTML = html;
+  termEl.appendChild(div);
+  while (termEl.children.length > 400) termEl.removeChild(termEl.firstChild);
+  termEl.scrollTop = termEl.scrollHeight;
+}
+function renderTotals() {
+  document.getElementById("tKwh").textContent = totals.kwh.toFixed(3) + " kWh";
+  document.getElementById("tRev").textContent = "₹" + totals.revenue.toFixed(2);
+  document.getElementById("tSess").textContent = String(totals.sessions);
+}
+function renderWallets(wallets) {
+  var el = document.getElementById("wallets");
+  var parts = ['<span style="color:#8b949e">Wallets (CSMS):</span>'];
+  Object.keys(wallets).forEach(function (tag) {
+    parts.push('<span class="w">' + esc(tag) + " <b>₹" +
+               Number(wallets[tag]).toFixed(2) + "</b></span>");
+  });
+  el.innerHTML = parts.join("");
+}
+
+/* ---------------- one bay's DOM ---------------- */
+function buildBay(cpId, idx) {
+  var wrap = document.getElementById("bays");
+  var div = document.createElement("div");
+  div.className = "bay";
+  div.id = "bay-" + cpId;
+  div.innerHTML =
+    '<div class="top"><span class="name">' + cpId + ' · SimWallbox 7.4</span>' +
+    '<span class="chip Offline" data-r="chip">Offline</span></div>' +
+    '<div class="carzone"><span class="car" data-r="car">🚙</span>' +
+    '<span class="cable" data-r="cable">🔌</span>' +
+    '<div class="batt"><div class="battbar"><div class="battfill" data-r="battfill"></div></div>' +
+    '<div style="font-size:11px;color:#8b949e;margin-top:2px">battery <span data-r="soc">—</span></div></div></div>' +
+    '<div class="readouts">' +
+    '<span>power <b data-r="kw">0.00 kW</b></span>' +
+    '<span>session <b data-r="skwh">0.000 kWh</b></span>' +
+    '<span>register <b data-r="reg">— Wh</b></span>' +
+    '<span>tx <b data-r="tx">—</b></span>' +
+    '<span>tag <b data-r="tag">—</b></span>' +
+    '<span>cap <b data-r="cap">none</b></span>' +
+    "</div>" +
+    '<div class="srv" data-r="srv">server view: —</div>' +
+    '<button data-r="end" disabled>End session (unplug)</button>';
+  wrap.appendChild(div);
+  var refs = {};
+  div.querySelectorAll("[data-r]").forEach(function (n) { refs[n.getAttribute("data-r")] = n; });
+  return refs;
+}
+
+/* =====================================================================
+   A genuine OCPP 1.6J charge-point client (in the browser).
+   ===================================================================== */
+function ChargePoint(cpId, idx) {
+  this.id = cpId;
+  this.ui = buildBay(cpId, idx);
+  this.ws = null;
+  this.seq = 0;
+  this.pending = {};            // msgId -> {resolve, reject}
+  this.booted = false;
+  this.heartbeatTimer = null;
+  this.reconnectTimer = null;
+  this.intentionalClose = false;
+  // charge-point state
+  this.status = "Offline";
+  this.operative = true;
+  this.carPresent = false;
+  this.register = 100000 + idx * 13777 + Math.floor(rand(0, 5000)); // lifetime Wh
+  this.txId = null;
+  this.sessionTag = null;
+  this.sessionStartRegister = 0;
+  this.soc = 0;
+  this.powerCapW = null;
+  this.pendingAvailability = null;
+  this.reservation = null;
+  this.reservationTimer = null;
+  this.meterTimer = null;
+  this.autoStopTimer = null;
+  this.finishTimer = null;
+  this.localListVersion = 0;
+  this.localList = [];
+  var self = this;
+  this.ui.end.addEventListener("click", function () { self.endSession("Local"); });
+}
+
+ChargePoint.prototype.connect = function () {
+  var self = this;
+  this.intentionalClose = false;
+  var ws = new WebSocket(WS_BASE + "/" + this.id, "ocpp1.6");
+  this.ws = ws;
+  ws.onopen = function () { self.boot(); };
+  ws.onmessage = function (ev) { self.onFrame(ev.data); };
+  ws.onclose = function () {
+    self.booted = false;
+    self.clearSessionTimers();
+    self.txId = null; self.carPresent = false;
+    self.setStatus("Offline");
+    self.render();
+    if (!self.intentionalClose) {
+      self.reconnectTimer = setTimeout(function () { self.connect(); }, 3000);
+    }
+  };
+  ws.onerror = function () { /* onclose follows */ };
+};
+
+ChargePoint.prototype.sendRaw = function (frameStr) {
+  if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(frameStr);
+};
+ChargePoint.prototype.nextId = function () {
+  this.seq += 1;
+  return "js-" + this.id + "-" + this.seq + "-" + Math.floor(Math.random() * 1e6);
+};
+
+/* Send a CALL, return a Promise for the CALLRESULT payload. */
+ChargePoint.prototype.call = function (action, payload) {
+  var self = this;
+  var id = this.nextId();
+  var frame = JSON.stringify([2, id, action, payload || {}]);
+  return new Promise(function (resolve, reject) {
+    self.pending[id] = { resolve: resolve, reject: reject };
+    self.sendRaw(frame);
+    setTimeout(function () {
+      if (self.pending[id]) { delete self.pending[id]; reject(new Error("timeout: " + action)); }
+    }, 15000);
+  });
+};
+ChargePoint.prototype.replyResult = function (id, payload) {
+  this.sendRaw(JSON.stringify([3, id, payload || {}]));
+};
+ChargePoint.prototype.replyError = function (id, code, desc) {
+  this.sendRaw(JSON.stringify([4, id, code, desc || "", {}]));
+};
+
+ChargePoint.prototype.onFrame = function (raw) {
+  var frame;
+  try { frame = JSON.parse(raw); } catch (e) { return; }
+  if (!Array.isArray(frame)) return;
+  var type = frame[0], id = frame[1];
+  if (type === 3 || type === 4) {
+    var p = this.pending[id];
+    if (p) {
+      delete this.pending[id];
+      if (type === 3) p.resolve(frame[2] || {});
+      else p.reject(new Error("CALLERROR " + frame[2] + ": " + frame[3]));
+    }
+    return;
+  }
+  if (type === 2) {
+    var action = frame[2], payload = frame[3] || {};
+    try {
+      var result = this.handleServerCall(action, payload);
+      this.replyResult(id, result || {});
+    } catch (e) {
+      if (e && e.ocppError) this.replyError(id, e.ocppError, "");
+      else this.replyError(id, "InternalError", String((e && e.message) || e));
+    }
+  }
+};
+
+/* ------------- server-initiated calls (CSMS -> this charger) ------------- */
+ChargePoint.prototype.handleServerCall = function (action, payload) {
+  var self = this;
+  switch (action) {
+    case "RemoteStartTransaction": {
+      if (this.carPresent || this.txId !== null || !this.booted) return { status: "Rejected" };
+      if (!this.operative || this.status === "Unavailable") return { status: "Rejected" };
+      if (this.status === "Reserved" && this.reservation &&
+          this.reservation.idTag !== payload.idTag) return { status: "Rejected" };
+      var tag = payload.idTag || "DEMO1234";
+      setTimeout(function () { self.beginCharge(tag, true); }, 100);
+      return { status: "Accepted" };
+    }
+    case "RemoteStopTransaction": {
+      if (this.txId !== null && payload.transactionId === this.txId) {
+        setTimeout(function () { self.endSession("Remote"); }, 100);
+        return { status: "Accepted" };
+      }
+      return { status: "Rejected" };
+    }
+    case "Reset": {
+      var self2 = this;
+      setTimeout(function () {
+        self2.intentionalClose = false;
+        if (self2.ws) { try { self2.ws.close(); } catch (e) {} }
+        // onclose schedules the reconnect + fresh BootNotification
+      }, 350);
+      return { status: "Accepted" };
+    }
+    case "UnlockConnector": {
+      // Works while the cable is still latched after a session (Finishing).
+      if (this.status === "Finishing") return { status: "Unlocked" };
+      return { status: "UnlockFailed" };
+    }
+    case "ChangeAvailability": {
+      var type = payload.type;
+      if (this.txId !== null && type === "Inoperative") {
+        this.pendingAvailability = "Inoperative";
+        return { status: "Scheduled" };
+      }
+      this.applyAvailability(type);
+      return { status: "Accepted" };
+    }
+    case "TriggerMessage": {
+      var want = payload.requestedMessage;
+      var self3 = this;
+      setTimeout(function () { self3.trigger(want); }, 100);
+      return { status: "Accepted" };
+    }
+    case "ReserveNow": {
+      if (this.status === "Available" && this.operative && !this.carPresent) {
+        this.reservation = { id: payload.reservationId, idTag: payload.idTag };
+        this.setStatus("Reserved");
+        var self4 = this;
+        var ttl = 90000;
+        if (payload.expiryDate) {
+          var t = Date.parse(payload.expiryDate) - Date.now();
+          if (t > 0 && t < 3600000) ttl = t;
+        }
+        clearTimeout(this.reservationTimer);
+        this.reservationTimer = setTimeout(function () {
+          if (self4.reservation && self4.status === "Reserved") {
+            self4.reservation = null; self4.setStatus("Available");
+          }
+        }, ttl);
+        return { status: "Accepted" };
+      }
+      return { status: "Rejected" };
+    }
+    case "CancelReservation": {
+      if (this.reservation && payload.reservationId === this.reservation.id) {
+        this.reservation = null;
+        clearTimeout(this.reservationTimer);
+        if (this.status === "Reserved") this.setStatus("Available");
+        return { status: "Accepted" };
+      }
+      return { status: "Rejected" };
+    }
+    case "SetChargingProfile": {
+      var profiles = payload.csChargingProfiles || [];
+      for (var i = 0; i < profiles.length; i++) {
+        var sched = profiles[i].chargingSchedule;
+        if (sched && sched.chargingSchedulePeriod && sched.chargingSchedulePeriod.length) {
+          var limit = sched.chargingSchedulePeriod[0].limit;
+          this.powerCapW = (sched.chargingRateUnit === "A") ? limit * VOLTAGE_V : limit;
+          this.render();
+          return { status: "Accepted" };
+        }
+      }
+      return { status: "Rejected" };
+    }
+    case "ClearChargingProfile": {
+      this.powerCapW = null;
+      this.render();
+      return { status: "Accepted" };
+    }
+    case "GetCompositeSchedule": {
+      var cap = this.powerCapW !== null ? this.powerCapW : BASE_POWER_W;
+      return { status: "Accepted", connectorId: payload.connectorId || 1,
+               schedule: { duration: payload.duration || 3600, chargingRateUnit: "W",
+                           chargingSchedulePeriod: [{ startPeriod: 0, limit: cap }] } };
+    }
+    case "GetConfiguration": {
+      var known = [
+        { key: "HeartbeatInterval", readonly: true, value: "30" },
+        { key: "MeterValueSampleInterval", readonly: false, value: "2" },
+        { key: "AuthorizeRemoteTxRequests", readonly: false, value: "true" }
+      ];
+      var unknown = [];
+      if (payload.key) {
+        payload.key.forEach(function (k) {
+          if (!known.some(function (e) { return e.key === k; })) unknown.push(k);
+        });
+        known = known.filter(function (e) { return payload.key.indexOf(e.key) >= 0; });
+      }
+      return { configurationKey: known, unknownKey: unknown };
+    }
+    case "GetLocalListVersion":
+      return { listVersion: this.localListVersion };
+    case "SendLocalList": {
+      this.localListVersion = payload.listVersion || this.localListVersion;
+      if (payload.updateType === "Full") this.localList = payload.localAuthorizationList || [];
+      else if (payload.localAuthorizationList) {
+        var self5 = this;
+        payload.localAuthorizationList.forEach(function (e) { self5.localList.push(e); });
+      }
+      return { status: "Accepted" };
+    }
+    case "ClearCache":
+      return { status: "Accepted" };
+    case "GetDiagnostics": {
+      var self6 = this;
+      setTimeout(function () {
+        self6.call("DiagnosticsStatusNotification", { status: "Uploaded" }).catch(function () {});
+      }, 800);
+      return { fileName: "diagnostics-" + this.id + ".log" };
+    }
+    case "UpdateFirmware": {
+      var self7 = this;
+      setTimeout(function () {
+        self7.call("FirmwareStatusNotification", { status: "Downloading" }).catch(function () {});
+      }, 1500);
+      setTimeout(function () {
+        self7.call("FirmwareStatusNotification", { status: "Installed" }).catch(function () {});
+      }, 4500);
+      return {};
+    }
+    case "DataTransfer":
+      return { status: "Accepted" };
+    default:
+      throw { ocppError: "NotImplemented" };
+  }
+};
+
+ChargePoint.prototype.applyAvailability = function (type) {
+  if (type === "Inoperative") {
+    this.operative = false;
+    if (this.txId === null) this.setStatus("Unavailable");
+  } else {
+    this.operative = true;
+    if (this.txId === null && !this.carPresent) {
+      this.setStatus(this.reservation ? "Reserved" : "Available");
+    }
+  }
+  this.render();
+};
+
+ChargePoint.prototype.trigger = function (want) {
+  if (want === "BootNotification") this.boot();
+  else if (want === "Heartbeat") this.call("Heartbeat", {}).catch(function () {});
+  else if (want === "StatusNotification") this.statusNotification(this.status);
+  else if (want === "MeterValues") this.sendMeterValues();
+  else if (want === "DiagnosticsStatusNotification") {
+    this.call("DiagnosticsStatusNotification", { status: "Idle" }).catch(function () {});
+  } else if (want === "FirmwareStatusNotification") {
+    this.call("FirmwareStatusNotification", { status: "Idle" }).catch(function () {});
+  }
+};
+
+/* ------------- charger-initiated flows ------------- */
+ChargePoint.prototype.boot = function () {
+  var self = this;
+  this.call("BootNotification", {
+    chargePointVendor: "MuseLab",
+    chargePointModel: "SimWallbox 7.4",
+    chargePointSerialNumber: "SN-" + this.id,
+    firmwareVersion: "1.0.0"
+  }).then(function (res) {
+    self.booted = true;
+    var interval = (res && res.interval) || 30;
+    clearInterval(self.heartbeatTimer);
+    self.heartbeatTimer = setInterval(function () {
+      self.call("Heartbeat", {}).catch(function () {});
+    }, interval * 1000);
+    if (self.status === "Offline") self.setStatus(self.operative ? "Available" : "Unavailable");
+    self.render();
+  }).catch(function () { /* server may be down; reconnect handles it */ });
+};
+
+ChargePoint.prototype.setStatus = function (status) {
+  this.status = status;
+  this.render();
+};
+ChargePoint.prototype.statusNotification = function (status) {
+  this.setStatus(status);
+  return this.call("StatusNotification", {
+    connectorId: 1, errorCode: "NoError", status: status, timestamp: isoNow()
+  }).catch(function () {});
+};
+
+/* A car plugs in (local button). Authorize first, then charge. */
+ChargePoint.prototype.carArrives = function () {
+  if (!this.booted || this.carPresent || this.txId !== null) return false;
+  if (!this.operative || this.status === "Unavailable") return false;
+  if (this.status === "Reserved") return false;
+  if (this.status !== "Available") return false;
+  var self = this;
+  this.carPresent = true;
+  this.render();
+  var tag = (Math.random() < 0.2) ? "GUEST009" : pick(WALLET_TAGS);
+  this.sessionTag = tag;
+  this.statusNotification("Preparing");
+  setTimeout(function () {
+    self.call("Authorize", { idTag: tag }).then(function (res) {
+      var st = res && res.idTagInfo && res.idTagInfo.status;
+      if (st !== "Accepted") {
+        // Rejected card: driver gives up and leaves.
+        setTimeout(function () {
+          self.carPresent = false; self.sessionTag = null;
+          self.statusNotification("Available"); self.render();
+        }, 1400);
+        return;
+      }
+      self.beginCharge(tag, false);
+    }).catch(function () {
+      self.carPresent = false; self.sessionTag = null;
+      self.statusNotification("Available"); self.render();
+    });
+  }, 600);
+  return true;
+};
+
+/* StartTransaction + meter loop. Used by local flow (after Authorize)
+   and by RemoteStartTransaction (CSMS already authorized the tag). */
+ChargePoint.prototype.beginCharge = function (tag, remote) {
+  var self = this;
+  this.carPresent = true;
+  this.sessionTag = tag;
+  this.render();
+  var doStart = function () {
+    self.sessionStartRegister = self.register;
+    self.soc = rand(15, 40);
+    self.call("StartTransaction", {
+      connectorId: 1, idTag: tag,
+      meterStart: Math.round(self.register), timestamp: isoNow()
+    }).then(function (res) {
+      self.txId = res.transactionId;
+      self.statusNotification("Charging");
+      self.ui.end.disabled = false;
+      self.meterTimer = setInterval(function () { self.meterTick(); }, METER_MS);
+      var dur = rand(24000, 44000);
+      self.autoStopTimer = setTimeout(function () {
+        self.endSession(Math.random() < 0.5 ? "EVDisconnected" : "Local");
+      }, dur);
+      self.render();
+    }).catch(function () {
+      self.carPresent = false; self.sessionTag = null;
+      self.statusNotification("Available"); self.render();
+    });
+  };
+  if (this.status !== "Preparing") {
+    this.statusNotification("Preparing");
+    setTimeout(doStart, 500);
+  } else {
+    doStart();
+  }
+};
+
+ChargePoint.prototype.effectivePower = function () {
+  var p = BASE_POWER_W + rand(-70, 70);
+  if (this.powerCapW !== null) p = Math.min(p, this.powerCapW);
+  return p;
+};
+
+ChargePoint.prototype.meterTick = function () {
+  if (this.txId === null) return;
+  var p = this.effectivePower();
+  var wh = p * (METER_MS / 1000) / 3600; // W * s -> Wh  (7.4 kW for 2 s ≈ 4.11 Wh)
+  this.register += wh;
+  this.soc = Math.min(100, this.soc + (wh / 1000) / BATTERY_KWH * 100);
+  this.sendMeterValues(p);
+  this.render(p);
+};
+
+ChargePoint.prototype.sendMeterValues = function (powerW) {
+  var p = (typeof powerW === "number") ? powerW : this.effectivePower();
+  this.call("MeterValues", {
+    connectorId: 1,
+    transactionId: this.txId,
+    meterValue: [{
+      timestamp: isoNow(),
+      sampledValue: [
+        { value: this.register.toFixed(1), measurand: "Energy.Active.Import.Register", unit: "Wh" },
+        { value: String(Math.round(p)), measurand: "Power.Active.Import", unit: "W" },
+        { value: (p / VOLTAGE_V).toFixed(1), measurand: "Current.Import", unit: "A" },
+        { value: String(VOLTAGE_V), measurand: "Voltage", unit: "V" },
+        { value: this.soc.toFixed(1), measurand: "SoC", unit: "Percent" }
+      ]
+    }]
+  }).catch(function () {});
+};
+
+ChargePoint.prototype.clearSessionTimers = function () {
+  clearInterval(this.meterTimer); this.meterTimer = null;
+  clearTimeout(this.autoStopTimer); this.autoStopTimer = null;
+  clearTimeout(this.finishTimer); this.finishTimer = null;
+};
+
+ChargePoint.prototype.endSession = function (reason) {
+  if (this.txId === null) return;
+  var self = this;
+  var tx = this.txId;
+  this.clearSessionTimers();
+  this.txId = null;
+  this.ui.end.disabled = true;
+  this.call("StopTransaction", {
+    transactionId: tx, meterStop: Math.round(this.register),
+    timestamp: isoNow(), reason: reason || "Local"
+  }).catch(function () {}).then(function () {
+    self.statusNotification("Finishing");
+    self.finishTimer = setTimeout(function () {
+      self.carPresent = false; self.sessionTag = null;
+      if (self.pendingAvailability) {
+        var pa = self.pendingAvailability; self.pendingAvailability = null;
+        self.applyAvailability(pa);
+      } else if (!self.operative) {
+        self.statusNotification("Unavailable");
+      } else if (self.reservation) {
+        self.statusNotification("Reserved");
+      } else {
+        self.statusNotification("Available");
+      }
+      self.render();
+    }, 2500);
+    self.render();
+  });
+};
+
+/* ------------- rendering ------------- */
+ChargePoint.prototype.render = function (powerW) {
+  var u = this.ui;
+  u.chip.textContent = this.booted ? this.status : "Offline";
+  u.chip.className = "chip " + (this.booted ? this.status : "Offline");
+  u.car.className = "car" + (this.carPresent ? " in" : "");
+  u.cable.className = "cable" + (this.txId !== null || this.status === "Preparing" ? " on" : "");
+  var charging = this.txId !== null;
+  var p = charging ? (typeof powerW === "number" ? powerW : this.effectivePower()) : 0;
+  u.kw.textContent = (p / 1000).toFixed(2) + " kW";
+  u.skwh.textContent = charging
+    ? ((this.register - this.sessionStartRegister) / 1000).toFixed(3) + " kWh"
+    : "0.000 kWh";
+  u.reg.textContent = Math.round(this.register) + " Wh";
+  u.tx.textContent = this.txId !== null ? "#" + this.txId : "—";
+  u.tag.textContent = this.sessionTag || "—";
+  u.cap.textContent = this.powerCapW !== null ? (this.powerCapW / 1000).toFixed(1) + " kW" : "none";
+  u.soc.textContent = this.carPresent ? this.soc.toFixed(0) + "%" : "—";
+  u.battfill.style.width = this.carPresent ? this.soc.toFixed(1) + "%" : "0%";
+  u.end.disabled = !charging;
+};
+
+/* ---------------- boot the four clients ---------------- */
+var clients = CP_IDS.map(function (id, i) {
+  var cp = new ChargePoint(id, i);
+  cp.connect();
+  return cp;
+});
+function clientById(id) {
+  for (var i = 0; i < clients.length; i++) if (clients[i].id === id) return clients[i];
+  return null;
+}
+
+/* ---------------- observer / control socket ---------------- */
+var obs = null;
+function connectObserver() {
+  obs = new WebSocket(WS_BASE + "/observe");
+  var pill = document.getElementById("obsPill");
+  obs.onopen = function () { pill.textContent = "observer: live"; pill.className = "pill ok"; };
+  obs.onclose = function () {
+    pill.textContent = "observer: down"; pill.className = "pill bad";
+    setTimeout(connectObserver, 3000);
+  };
+  obs.onmessage = function (ev) {
+    var msg;
+    try { msg = JSON.parse(ev.data); } catch (e) { return; }
+    if (typeof msg.raw === "string") {
+      var arrow = msg.dir === "cp->csms" ? "CP → CSMS" : "CSMS → CP";
+      var cls = msg.dir === "cp->csms" ? "dir-cp" : "dir-csms";
+      term('<span class="' + cls + '">' + esc(arrow) + " " + esc(msg.cpId) + "</span>  " +
+           esc(msg.raw));
+      return;
+    }
+    if (msg.event === "summary") {
+      totals.kwh += msg.kwh || 0;
+      totals.revenue += msg.cost || 0;
+      totals.sessions += 1;
+      renderTotals();
+      term("◆ SESSION SUMMARY " + esc(msg.cpId) + " tx=" + msg.transactionId +
+           " tag=" + esc(msg.idTag || "") + " " + (msg.kwh || 0).toFixed(3) + " kWh" +
+           " cost ₹" + (msg.cost || 0).toFixed(2) + " (₹" + TARIFF_INR + "/kWh)" +
+           " wallet → ₹" + (msg.walletBalance === null ? "—" : Number(msg.walletBalance).toFixed(2)),
+           "sum");
+      return;
+    }
+    if (msg.event === "wallets") { renderWallets(msg.wallets); return; }
+    if (msg.event === "state") {
+      var cp = clientById(msg.cpId);
+      if (cp) {
+        cp.ui.srv.textContent = "server view: " + (msg.status || "—") +
+          (msg.model ? " · " + msg.model : "") + (msg.firmware ? " fw " + msg.firmware : "");
+      }
+      return;
+    }
+    if (msg.event === "meter") {
+      var cp2 = clientById(msg.cpId);
+      // Only mirror external traffic (e.g. the Python sim); a JS client's
+      // own bay is already driven by the client itself.
+      if (cp2 && cp2.txId === null && msg.transactionId !== null && msg.power) {
+        cp2.ui.kw.textContent = (msg.power / 1000).toFixed(2) + " kW (ext)";
+        cp2.ui.reg.textContent = Math.round(msg.register) + " Wh (ext)";
+      }
+      return;
+    }
+    if (msg.event === "control_result") {
+      term("◆ control " + esc(msg.control) + " → " + esc(msg.cpId) + ": " +
+           esc(JSON.stringify(msg.result)), "evt");
+      return;
+    }
+    if (msg.event === "control_error") {
+      term("◆ control " + esc(msg.control) + " → " + esc(msg.cpId) +
+           " FAILED: " + esc(msg.error || ""), "err");
+      return;
+    }
+  };
+}
+connectObserver();
+renderTotals();
+
+/* ---------------- controls ---------------- */
+document.getElementById("btnCar").addEventListener("click", function () {
+  var candidates = clients.filter(function (c) {
+    return c.booted && !c.carPresent && c.txId === null && c.status === "Available";
+  });
+  if (candidates.length) pick(candidates).carArrives();
+  else term("◆ no free bay for a new car right now", "err");
+});
+
+document.querySelectorAll("[data-op]").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    if (!obs || obs.readyState !== WebSocket.OPEN) {
+      term("◆ observer socket is down — controls unavailable", "err");
+      return;
+    }
+    var cpId = document.getElementById("opCp").value;
+    var tag = document.getElementById("opTag").value || "DEMO1234";
+    var op = btn.getAttribute("data-op");
+    var ctrl = null;
+    if (op === "RemoteStartTransaction") ctrl = { control: op, cpId: cpId, idTag: tag };
+    else if (op === "RemoteStopTransaction") ctrl = { control: op, cpId: cpId };
+    else if (op === "UnlockConnector") ctrl = { control: op, cpId: cpId, connectorId: 1 };
+    else if (op === "Reset") ctrl = { control: op, cpId: cpId, type: "Soft" };
+    else if (op === "Inoperative") ctrl = { control: "ChangeAvailability", cpId: cpId, type: "Inoperative", connectorId: 0 };
+    else if (op === "Operative") ctrl = { control: "ChangeAvailability", cpId: cpId, type: "Operative", connectorId: 0 };
+    else if (op === "TrigBoot") ctrl = { control: "TriggerMessage", cpId: cpId, requestedMessage: "BootNotification" };
+    else if (op === "TrigMeter") ctrl = { control: "TriggerMessage", cpId: cpId, requestedMessage: "MeterValues" };
+    if (ctrl) obs.send(JSON.stringify(ctrl));
+  });
+});
+</script>
+</body>
+</html>

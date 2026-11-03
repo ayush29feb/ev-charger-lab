@@ -13,6 +13,7 @@ All raw OCPP frames are appended to transcript.log, same style as the CSMS.
 """
 
 import asyncio
+import os
 import random
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,7 +26,10 @@ from ocpp.v16 import call
 LAB_DIR = Path(__file__).resolve().parent
 TRANSCRIPT = LAB_DIR / "transcript.log"
 CP_ID = "SIM_001"
-CSMS_URL = f"ws://localhost:9000/{CP_ID}"
+# Default unchanged (port 9000, the original csms_server.py). Override with
+# the CSMS_URL env var to point the sim at another CSMS, e.g. the live one:
+#   CSMS_URL=ws://localhost:9001/SIM_001 ./venv/bin/python charge_point_sim.py
+CSMS_URL = os.environ.get("CSMS_URL", f"ws://localhost:9000/{CP_ID}")
 ID_TAG = "DEMO1234"
 
 POWER_W = 7400.0          # simulated 7.4 kW wallbox
