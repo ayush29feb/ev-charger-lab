@@ -18,6 +18,13 @@ primary_region = "sin"
   [[services.ports]]
     port = 443
     handlers = ["tls", "http"]
+  [[services.http_checks]]
+    interval = "10s"
+    timeout = "2s"
+    grace_period = "10s"
+    method = "get"
+    path = "/"
+    protocol = "http"
 
 # The OCPP WebSocket endpoint + /observe feed (port 9001).
 # TLS is terminated at Fly's edge, so chargers/browsers use wss://<app>.fly.dev:9001/<cpId>
@@ -29,3 +36,7 @@ primary_region = "sin"
   [[services.ports]]
     port = 9001
     handlers = ["tls"]
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
