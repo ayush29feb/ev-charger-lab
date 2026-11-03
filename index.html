@@ -120,6 +120,7 @@
   .charger .screen .pw{font-size:9.5px;color:#7ee2b8}
   .charger .ledrow{display:flex;justify-content:center;gap:5px;margin-top:5px}
   .led{width:7px;height:7px;border-radius:50%;background:#3a4740}
+  .led.red{background:#ff6b5e;box-shadow:0 0 6px rgba(255,107,94,.85)}
   .led.green{background:#2ee6a8;box-shadow:0 0 6px rgba(46,230,168,.8)}
   .led.amber{background:#f5b54a;box-shadow:0 0 6px rgba(245,181,74,.8)}
   .led.blue{background:#57b7ff;box-shadow:0 0 6px rgba(87,183,255,.8)}
@@ -192,6 +193,24 @@
 
   .foot{margin-top:14px;font-size:12.5px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 18px}
   .foot a{color:var(--accent-ink);font-weight:600}
+
+  /* ---------- operator console ---------- */
+  .op-panel{margin-top:14px}
+  .op-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:4px 22px;padding:14px 16px 6px}
+  .op-group{padding-bottom:10px}
+  .op-group h3{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+  .op-group .btns{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+  .btn.small{padding:6px 10px;font-size:12px}
+  .op-result{margin:2px 16px 0;padding:9px 12px;border:1px dashed var(--line);border-radius:10px;font-size:12px;color:var(--ink-2);background:var(--panel-2)}
+  .cov{padding:12px 16px 15px;border-top:1px solid var(--line);margin-top:12px}
+  .cov .cov-head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-bottom:9px}
+  .cov .cov-head h3{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin:0}
+  .cov .cov-count{font-size:12px;color:var(--ink-2)}
+  .cov-row{display:flex;gap:10px;margin-bottom:6px;align-items:flex-start}
+  .cov-lab{font-size:11px;font-weight:600;color:var(--ink-2);width:92px;flex:none;padding-top:4px}
+  .cov-chips{display:flex;flex-wrap:wrap;gap:5px;flex:1}
+  .cov-chip{font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:3px 8px;border-radius:99px;border:1px solid var(--line);color:var(--ink-3);background:var(--panel-2)}
+  .cov-chip.lit{border-color:var(--accent);color:var(--accent-ink);background:var(--chip);font-weight:600}
 
   @media (max-width:1020px){
     .layout{grid-template-columns:1fr}
@@ -294,6 +313,76 @@
     </section>
   </div>
 
+  <!-- ============ OPERATOR CONSOLE ============ -->
+  <section class="panel op-panel" aria-label="Operator console">
+    <div class="panel-head">
+      <h2>Operator console</h2>
+      <span class="tag">The other half of OCPP — commands the CSMS sends down to a charger</span>
+      <div class="head-right"><span class="tag mono" id="opTargetLabel">Target · SIM_001 — Bay 1</span></div>
+    </div>
+    <div class="op-body">
+      <div class="op-group">
+        <h3>Target charger</h3>
+        <div class="btns">
+          <span class="seg" role="group" aria-label="Target charger" id="opTargets">
+            <button data-bay="0" aria-pressed="true">SIM_001</button><button data-bay="1" aria-pressed="false">SIM_002</button><button data-bay="2" aria-pressed="false">SIM_003</button><button data-bay="3" aria-pressed="false">SIM_004</button>
+          </span>
+        </div>
+        <h3 style="margin-top:12px">Trigger a message</h3>
+        <div class="btns">
+          <button class="btn small" data-op="trigger-boot">BootNotification</button>
+          <button class="btn small" data-op="trigger-status">StatusNotification</button>
+          <button class="btn small" data-op="trigger-heartbeat">Heartbeat</button>
+          <button class="btn small" data-op="trigger-meter">MeterValues</button>
+        </div>
+      </div>
+      <div class="op-group">
+        <h3>Remote session control</h3>
+        <div class="btns">
+          <button class="btn small primary" data-op="remote-start">Remote start</button>
+          <button class="btn small" data-op="remote-stop">Remote stop</button>
+          <button class="btn small" data-op="unlock">Unlock connector</button>
+        </div>
+      </div>
+      <div class="op-group">
+        <h3>Reservations</h3>
+        <div class="btns">
+          <button class="btn small" data-op="reserve">Reserve now</button>
+          <button class="btn small" data-op="cancel-reserve">Cancel reservation</button>
+        </div>
+      </div>
+      <div class="op-group">
+        <h3>Charger management</h3>
+        <div class="btns">
+          <button class="btn small" data-op="availability">Toggle availability</button>
+          <button class="btn small" data-op="reset-soft">Reset (soft)</button>
+          <button class="btn small" data-op="reset-hard">Reset (hard)</button>
+          <button class="btn small" data-op="get-config">Get configuration</button>
+          <button class="btn small" data-op="change-config">Change HeartbeatInterval</button>
+        </div>
+      </div>
+      <div class="op-group">
+        <h3>Smart charging · cap this charger</h3>
+        <div class="btns">
+          <span class="seg" role="group" aria-label="Profile limit" id="opLimits">
+            <button data-limit="3.3" aria-pressed="false">3.3 kW</button><button data-limit="5" aria-pressed="true">5.0 kW</button><button data-limit="7.4" aria-pressed="false">7.4 kW</button>
+          </span>
+        </div>
+        <div class="btns" style="margin-top:8px">
+          <button class="btn small primary" data-op="set-profile">Set charging profile</button>
+          <button class="btn small" data-op="composite">Get composite schedule</button>
+          <button class="btn small" data-op="clear-profile">Clear profile</button>
+        </div>
+      </div>
+    </div>
+    <div class="op-result mono" id="opResult">Pick a charger and send a command — watch it travel down to the charger and back in the CSMS terminal. Commands a charger can't honour come back Rejected, just like the real protocol. Faults, firmware updates and local-list pushes also happen on their own every so often — keep an eye on the feed.</div>
+    <div class="cov">
+      <div class="cov-head"><h3>OCPP 1.6 action coverage</h3><span class="cov-count mono" id="covCount">0 / 28 actions exercised</span></div>
+      <div class="cov-row"><span class="cov-lab">Charger → CSMS</span><div class="cov-chips" id="covUp"></div></div>
+      <div class="cov-row"><span class="cov-lab">CSMS → Charger</span><div class="cov-chips" id="covDown"></div></div>
+    </div>
+  </section>
+
   <div class="foot">
     <span>Simulation runs entirely in this page — it mirrors <span class="mono">csms_server.py</span> + <span class="mono">charge_point_sim.py</span> from your ev-charger-lab repo.</span>
     <span>Tariff ₹18/kWh · Heartbeat 30 s · Only tag <span class="mono">DEMO1234</span>-class tags are accepted — watch for the odd rejected one.</span>
@@ -350,7 +439,11 @@
   for (var i=0;i<4;i++){
     (function(i){
       var bay = { idx:i, id:"SIM_00"+(i+1), status:"Booting", car:null, txId:null,
-                  meterStart:104520 + i*1731, register:104520 + i*1731, booted:false };
+                  meterStart:104520 + i*1731, register:104520 + i*1731, booted:false,
+                  availability:"Operative", reserved:false, reserveT:0, reservationId:0,
+                  profile:null, listVersion:7, offlineAuthNext:false,
+                  resetPending:false, availPending:null, fw:"1.0.0", hb:30,
+                  faulted:false, updating:false };
       var el = document.createElement("div");
       el.className = "bay"; el.style.left = (bayX[i]-11.5)+"%";
       el.setAttribute("role","button"); el.setAttribute("tabindex","0");
@@ -381,7 +474,7 @@
     leds[0].className = "led l1"; leds[1].className = "led l2"; leds[2].className = "led l3";
     if (status==="Available"){ leds[0].classList.add("green"); }
     else if (status==="Charging"){ leds[1].classList.add("blue"); }
-    else if (status==="Finishing"){ leds[2].classList.add("amber"); }
+    else if (status==="Faulted"){ leds[2].classList.add("red"); }
     else { leds[2].classList.add("amber"); }
     if (selectedBay === bay.idx) renderBayDetail();
   }
@@ -394,12 +487,12 @@
     return p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds());
   }
   function uid(){ uidCounter++; return "msg-"+(1000+uidCounter)+"-lab"; }
-  function addMsg(kind, cpId, action, summary, payload){
+  function addMsg(kind, cpId, action, summary, payload, dirOverride){
     if (kind === "call" || kind === "resp"){ msgCount++; $("#stMsgs").textContent = msgCount; }
     var div = document.createElement("div");
     div.className = "msg "+kind; div.dataset.kind = kind;
     if (filter !== "all" && kind !== filter && kind !== "summary") div.style.display = "none";
-    var dirLabel = kind==="call" ? "CP → CSMS" : kind==="resp" ? "CSMS → CP" : "CSMS NOTE";
+    var dirLabel = dirOverride || (kind==="call" ? "CP → CSMS" : kind==="resp" ? "CSMS → CP" : "CSMS NOTE");
     var html = '<div class="row1"><span class="t">'+nowStamp()+'</span>' +
       '<span class="dir '+kind+'">'+dirLabel+'</span>' +
       '<span class="act">'+action+'</span>' +
@@ -420,10 +513,43 @@
     return JSON.stringify([3, id, obj], null, 1);
   }
   function callMsg(bay, action, summary, obj){
+    markAction(action);
     var id = uid();
     addMsg("call", bay.id, action, summary, frame(2, id, action, obj));
     return id;
   }
+  /* ---- server-initiated (downlink) frames: CSMS sends a CALL, charger answers ---- */
+  function srvCall(bay, action, summary, obj){
+    markAction(action);
+    var id = uid();
+    addMsg("resp", bay.id, action, summary, frame(2, id, action, obj), "CSMS → CP · CALL");
+    return id;
+  }
+  function srvResp(bay, action, id, summary, obj){
+    addMsg("call", bay.id, action+" ✓", summary, frame(3, id, null, obj), "CP → CSMS · RESULT");
+  }
+  function isoNow(){ return new Date().toISOString().replace(/\..*/,"Z"); }
+  /* ---- OCPP 1.6 action coverage (28 unique actions) ---- */
+  var COV_UP = ["Authorize","BootNotification","DataTransfer","DiagnosticsStatusNotification","FirmwareStatusNotification","Heartbeat","MeterValues","StartTransaction","StatusNotification","StopTransaction"];
+  var COV_DOWN = ["CancelReservation","ChangeAvailability","ChangeConfiguration","ClearCache","ClearChargingProfile","GetCompositeSchedule","GetConfiguration","GetDiagnostics","GetLocalListVersion","RemoteStartTransaction","RemoteStopTransaction","ReserveNow","Reset","SendLocalList","SetChargingProfile","TriggerMessage","UnlockConnector","UpdateFirmware"];
+  var covSeen = {}, covChips = {};
+  function buildCov(el, list){
+    if (!el) return;
+    list.forEach(function(a){
+      var c = document.createElement("span");
+      c.className = "cov-chip"; c.textContent = a;
+      el.appendChild(c); covChips[a] = c;
+    });
+  }
+  function markAction(a){
+    if (covSeen[a]) return;
+    covSeen[a] = true;
+    if (covChips[a]) covChips[a].classList.add("lit");
+    var cc = document.getElementById("covCount");
+    if (cc) cc.textContent = Object.keys(covSeen).length + " / 28 actions exercised";
+  }
+  buildCov(document.getElementById("covUp"), COV_UP);
+  buildCov(document.getElementById("covDown"), COV_DOWN);
   function respMsg(bay, action, id, summary, obj){
     addMsg("resp", bay.id, action+" ✓", summary, frame(3, id, null, obj));
   }
@@ -459,7 +585,7 @@
   /* ================= cars ================= */
   var cars = [];
   function spawnCar(){
-    var free = bays.filter(function(b){ return !b.car && b.booted; });
+    var free = bays.filter(function(b){ return !b.car && b.booted && !b.reserved && b.availability==="Operative" && !b.faulted && !b.updating; });
     if (!free.length){ queue++; renderQueue(); return; }
     var bay = free[Math.floor(Math.random()*free.length)];
     var m = MODELS[Math.floor(Math.random()*MODELS.length)];
@@ -521,8 +647,8 @@
             { connectorId:1, errorCode:"NoError", status:"Preparing" });
           respMsg(bay, "StatusNotification", id, "Acknowledged", {});
           car.bootId = callMsg(bay, "BootNotification",
-            "SimWallbox 7.4 · MuseLab · fw 1.0.0 — charger checking in",
-            { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:"1.0.0" });
+            "SimWallbox 7.4 · MuseLab · fw "+bay.fw+" — charger checking in",
+            { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:bay.fw });
         }
         break;
       }
@@ -547,8 +673,15 @@
             car.phase = "leaving"; car.t = 0;
             bay.cable.classList.remove("on","flow");
           } else {
-            respMsg(bay, "Authorize", car.authId, "Accepted — wallet verified, balance OK",
-              { idTagInfo:{ status:"Accepted" } });
+            if (bay.offlineAuthNext){
+              bay.offlineAuthNext = false;
+              note(bay.id+": CSMS link blipped — the charger authorised tag "+car.idTag+" from its local list v"+bay.listVersion+" instead of asking the server");
+              respMsg(bay, "Authorize", car.authId, "Accepted — matched in local authorization list v"+bay.listVersion+" (offline authorisation, reconciled on reconnect)",
+                { idTagInfo:{ status:"Accepted" } });
+            } else {
+              respMsg(bay, "Authorize", car.authId, "Accepted — wallet verified, balance OK",
+                { idTagInfo:{ status:"Accepted" } });
+            }
             setFlow("start");
             txCounter++;
             bay.txId = txCounter;
@@ -575,24 +708,28 @@
       }
       case "charging": {
         car.meterTimer -= dt;
-        var ratePerSec = car.power * (TIME_SCALE/3600) / car.cap * 100; // % SoC per real second
+        var effPower = bay.profile ? Math.min(car.power, bay.profile.limitKw) : car.power;
+        car.effPower = effPower;
+        var capped = bay.profile && bay.profile.limitKw < car.power;
+        var ratePerSec = effPower * (TIME_SCALE/3600) / car.cap * 100; // % SoC per real second
         car.soc = Math.min(car.socTarget, car.soc + ratePerSec * dt);
         bay.register = bay.meterStart + (car.soc - car.socStart)/100 * car.cap * 1000;
         car.barEl.style.width = car.soc + "%";
-        car.pctEl.textContent = Math.round(car.soc) + "% · " + car.power.toFixed(1) + " kW";
+        car.pctEl.textContent = Math.round(car.soc) + "% · " + effPower.toFixed(1) + " kW" + (capped ? " capped" : "");
+        bay.screenPw.textContent = effPower.toFixed(1) + " kW" + (capped ? " · capped" : "");
         if (selectedBay === bay.idx) renderBayDetail();
         if (car.meterTimer <= 0){
           car.meterTimer = 2.0;
           car.meterCount++;
           var delivered = (bay.register - bay.meterStart)/1000;
           totalEnergy += 0; // energy counted continuously below via register delta in stats tick
-          var amps = (car.power*1000/230).toFixed(1);
+          var amps = (effPower*1000/230).toFixed(1);
           var mid = callMsg(bay, "MeterValues",
-            "tx "+bay.txId+" · register "+bay.register.toFixed(1)+" Wh · "+Math.round(car.power*1000)+" W · "+amps+" A · 230 V → "+delivered.toFixed(2)+" kWh so far",
+            "tx "+bay.txId+" · register "+bay.register.toFixed(1)+" Wh · "+Math.round(effPower*1000)+" W · "+amps+" A · 230 V → "+delivered.toFixed(2)+" kWh so far"+(capped ? " · held at the "+bay.profile.limitKw.toFixed(1)+" kW profile cap" : ""),
             { connectorId:1, transactionId:bay.txId, meterValue:[{ timestamp:new Date().toISOString().replace(/\..*/,"Z"),
               sampledValue:[
                 { value: bay.register.toFixed(1), measurand:"Energy.Active.Import.Register", unit:"Wh" },
-                { value: String(Math.round(car.power*1000)), measurand:"Power.Active.Import", unit:"W" },
+                { value: String(Math.round(effPower*1000)), measurand:"Power.Active.Import", unit:"W" },
                 { value: amps, measurand:"Current.Import", unit:"A" },
                 { value:"230", measurand:"Voltage", unit:"V" },
                 { value: car.soc.toFixed(1), measurand:"SoC", unit:"Percent" }
@@ -608,6 +745,20 @@
           car.stopId = callMsg(bay, "StopTransaction",
             "Target reached · meterStop "+Math.round(bay.register)+" Wh · tx "+bay.txId,
             { meterStop: Math.round(bay.register), timestamp:new Date().toISOString().replace(/\..*/,"Z"), transactionId: bay.txId, reason:"EVDisconnected" });
+        }
+        break;
+      }
+      case "remote_start": {
+        if (car.t > 0.7){
+          setFlow("start");
+          txCounter++;
+          bay.txId = txCounter;
+          bay.register = 104520 + Math.floor(Math.random()*900);
+          bay.meterStart = bay.register;
+          car.startId = callMsg(bay, "StartTransaction",
+            "Remote start honoured · connector 1 · tag DEMO1234 · meterStart "+bay.meterStart+" Wh — no RFID tap needed",
+            { connectorId:1, idTag:"DEMO1234", meterStart:bay.meterStart, timestamp:isoNow() });
+          car.phase = "start"; car.t = 0;
         }
         break;
       }
@@ -685,22 +836,32 @@
   function selectBay(i){
     selectedBay = i;
     bays.forEach(function(b, j){ b.el.classList.toggle("selected", j===i); });
+    document.querySelectorAll("#opTargets [data-bay]").forEach(function(x){
+      x.setAttribute("aria-pressed", parseInt(x.dataset.bay,10)===i ? "true" : "false");
+    });
+    var lbl = $("#opTargetLabel");
+    if (lbl && bays[i]) lbl.textContent = "Target · "+bays[i].id+" — Bay "+(i+1);
     renderBayDetail();
   }
   function renderBayDetail(){
     if (selectedBay < 0) return;
     var b = bays[selectedBay], d = $("#bayDetail");
     if (!b.car){
-      d.innerHTML = "<strong>"+b.id+" · Bay "+(b.idx+1)+"</strong> — "+b.status+". SimWallbox 7.4 · Type 2 connector free, meter at "+Math.round(b.register)+" Wh. Waiting for the next car.";
+      var flags = "";
+      if (b.reserved) flags += " Reserved for tag DEMO1234 (reservation "+b.reservationId+").";
+      if (b.availability === "Inoperative") flags += " Set Inoperative by the operator — out of service.";
+      if (b.profile) flags += " A smart-charging cap of "+b.profile.limitKw.toFixed(1)+" kW will apply to the next session.";
+      d.innerHTML = "<strong>"+b.id+" · Bay "+(b.idx+1)+"</strong> — "+b.status+". SimWallbox 7.4 · Type 2 connector free, meter at "+Math.round(b.register)+" Wh."+flags+" Waiting for the next car.";
       return;
     }
     var c = b.car;
     var phaseName = { drive_in:"driving in", parking:"parking & plugging in", boot:"booting / handshaking", auth:"authorising RFID",
-      start:"starting transaction", charging:"charging", stop:"closing session", leaving:"unplugging", drive_out:"driving out" }[c.phase] || c.phase;
+      start:"starting transaction", remote_start:"starting (remote start from CSMS)", charging:"charging", stop:"closing session", leaving:"unplugging", drive_out:"driving out" }[c.phase] || c.phase;
     var extra = "";
     if (c.phase === "charging" || c.phase === "stop"){
       extra = " · tx "+b.txId+" · "+((b.register-b.meterStart)/1000).toFixed(2)+" kWh delivered · ₹"+(((b.register-b.meterStart)/1000)*18).toFixed(2)+" so far";
     }
+    if (b.profile) extra += " · smart-charging cap "+b.profile.limitKw.toFixed(1)+" kW active";
     d.innerHTML = "<strong>"+b.id+" · Bay "+(b.idx+1)+"</strong> — "+c.make+" "+c.model+" is "+phaseName+
       " · battery "+Math.round(c.soc)+"% of "+c.cap+" kWh · "+c.power.toFixed(1)+" kW · tag "+c.idTag+extra+".";
   }
@@ -714,8 +875,8 @@
     setTimeout(function(){
       if (!running && simSeconds > 0) { /* still boot */ }
       bay.booted = true;
-      var id = callMsg(bay, "BootNotification", "SimWallbox 7.4 · MuseLab · fw 1.0.0 — charger powered on",
-        { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:"1.0.0" });
+      var id = callMsg(bay, "BootNotification", "SimWallbox 7.4 · MuseLab · fw "+bay.fw+" — charger powered on",
+        { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:bay.fw });
       respMsg(bay, "BootNotification", id, "Accepted · heartbeat every 30 s",
         { currentTime:new Date().toISOString().replace(/\..*/,"Z"), interval:30, status:"Accepted" });
       setBayStatus(bay, "Available", "");
@@ -739,7 +900,12 @@
     $("#simClock").textContent = "SIM " + (hh<10?"0":"")+hh + ":" + (mm<10?"0":"")+mm + " · 300× time";
     for (var i = cars.length-1; i >= 0; i--){
       tickCar(cars[i], dt);
-      if (cars[i].phase === "gone") cars.splice(i,1);
+      if (cars[i].phase === "gone"){
+        var gb = cars[i].bay;
+        cars.splice(i,1);
+        if (gb.resetPending){ gb.resetPending = false; doReset(gb); }
+        else if (gb.availPending){ var av = gb.availPending; gb.availPending = null; applyAvailability(gb, av); }
+      }
     }
     // continuous energy accounting
     updateStats();
@@ -759,7 +925,383 @@
         respMsg(hb, "Heartbeat", hid, "Clock synced", { currentTime:new Date().toISOString().replace(/\..*/,"Z") });
       }
     }
+    // reservation expiry
+    bays.forEach(function(b){
+      if (b.reserved && !b.car){
+        b.reserveT -= dt;
+        if (b.reserveT <= 0){
+          b.reserved = false;
+          statusNote(b, "Available");
+          restoreBayStatus(b);
+          note(b.id+": reservation "+b.reservationId+" expired unused — bay released");
+        }
+      }
+    });
+    // ambient full-protocol events (faults, firmware, local list, cache, telemetry)
+    eventIn -= dt;
+    if (eventIn <= 0){ eventIn = 30 + Math.random()*18; runAmbient(); }
   }, 50);
+
+  /* ================= operator console ================= */
+  var opLimit = 5.0, resCounter = 100;
+  function opBay(){ return bays[selectedBay >= 0 ? selectedBay : 0]; }
+  function opSay(text){ $("#opResult").textContent = text; }
+  function opResult(bay, action, ok, text){
+    opSay(bay.id+" · "+action+" → "+(ok ? "Accepted" : "Rejected")+" — "+text);
+  }
+  function ocppStatus(bay){
+    if (bay.car) return bay.car.phase==="charging" ? "Charging" : (bay.status==="Finishing" ? "Finishing" : "Preparing");
+    if (bay.faulted) return "Faulted";
+    if (bay.reserved) return "Reserved";
+    if (bay.availability==="Inoperative") return "Unavailable";
+    return "Available";
+  }
+  function statusNote(bay, status){
+    var sid = callMsg(bay, "StatusNotification", "Connector 1 · "+status,
+      { connectorId:1, errorCode:"NoError", status:status });
+    respMsg(bay, "StatusNotification", sid, "Acknowledged", {});
+  }
+  function restoreBayStatus(bay){
+    if (bay.car) return;
+    if (bay.faulted) setBayStatus(bay, "Faulted", "ground fault");
+    else if (bay.updating) setBayStatus(bay, "Updating fw", "do not unplug");
+    else if (bay.reserved) setBayStatus(bay, "Reserved", "held for DEMO1234");
+    else if (bay.availability==="Inoperative") setBayStatus(bay, "Unavailable", "");
+    else setBayStatus(bay, "Available", "");
+  }
+  function doReset(bay){
+    setBayStatus(bay, "Booting…", "");
+    note(bay.id+" is rebooting…");
+    setTimeout(function(){
+      var id = callMsg(bay, "BootNotification", "SimWallbox 7.4 · MuseLab · fw "+bay.fw+" — back online after reset",
+        { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:bay.fw });
+      respMsg(bay, "BootNotification", id, "Accepted · heartbeat every "+bay.hb+" s",
+        { currentTime:isoNow(), interval:bay.hb, status:"Accepted" });
+      restoreBayStatus(bay);
+    }, 1400);
+  }
+  function applyAvailability(bay, type){
+    bay.availability = type;
+    statusNote(bay, type==="Inoperative" ? "Unavailable" : "Available");
+    if (!bay.car) restoreBayStatus(bay);
+  }
+
+  function opRemoteStart(){
+    var bay = opBay(), car = bay.car;
+    var id = srvCall(bay, "RemoteStartTransaction", "Operator / app start request · connector 1 · idTag DEMO1234",
+      { connectorId:1, idTag:"DEMO1234" });
+    if (car && (car.phase==="auth" || car.phase==="boot")){
+      if (car.phase==="boot" && car.bootId){
+        respMsg(bay, "BootNotification", car.bootId, "Accepted · heartbeat every "+bay.hb+" s",
+          { currentTime:isoNow(), interval:bay.hb, status:"Accepted" });
+      }
+      if (car.phase==="auth" && car.authId){
+        respMsg(bay, "Authorize", car.authId, "Accepted — session taken over by the remote start", { idTagInfo:{ status:"Accepted" } });
+      }
+      srvResp(bay, "RemoteStartTransaction", id, "Accepted — EV is plugged in, the charger starts the transaction itself", { status:"Accepted" });
+      car.phase = "remote_start"; car.t = 0;
+      opResult(bay, "RemoteStartTransaction", true, "the plugged-in car starts charging without an RFID tap");
+    } else if (car && car.phase==="charging"){
+      srvResp(bay, "RemoteStartTransaction", id, "Rejected — a transaction is already running on connector 1", { status:"Rejected" });
+      opResult(bay, "RemoteStartTransaction", false, "that charger is already charging");
+    } else if (car){
+      srvResp(bay, "RemoteStartTransaction", id, "Rejected — EV connected but the charger is not ready yet", { status:"Rejected" });
+      opResult(bay, "RemoteStartTransaction", false, "try again in a moment, while the car is authorising");
+    } else {
+      srvResp(bay, "RemoteStartTransaction", id, "Rejected — no EV connected to connector 1", { status:"Rejected" });
+      opResult(bay, "RemoteStartTransaction", false, "wait for a car to plug in, then hit remote start while it is authorising");
+    }
+  }
+  function opRemoteStop(){
+    var bay = opBay(), car = bay.car;
+    if (car && car.phase==="charging"){
+      var id = srvCall(bay, "RemoteStopTransaction", "Operator stop request · tx "+bay.txId, { transactionId:bay.txId });
+      srvResp(bay, "RemoteStopTransaction", id, "Accepted — charger will end tx "+bay.txId, { status:"Accepted" });
+      setFlow("stop");
+      bay.cable.classList.remove("flow");
+      setBayStatus(bay, "Finishing", "remote stop");
+      car.stopId = callMsg(bay, "StopTransaction", "Remote stop honoured · meterStop "+Math.round(bay.register)+" Wh · tx "+bay.txId,
+        { meterStop:Math.round(bay.register), timestamp:isoNow(), transactionId:bay.txId, reason:"Remote" });
+      car.phase = "stop"; car.t = 0;
+      opResult(bay, "RemoteStopTransaction", true, "session closing — watch the bill land in the terminal");
+    } else {
+      var id2 = srvCall(bay, "RemoteStopTransaction", "Operator stop request", { transactionId: bay.txId || 0 });
+      srvResp(bay, "RemoteStopTransaction", id2, "Rejected — no active transaction on this charger", { status:"Rejected" });
+      opResult(bay, "RemoteStopTransaction", false, "nothing is charging there");
+    }
+  }
+  function opUnlock(){
+    var bay = opBay(), car = bay.car;
+    var id = srvCall(bay, "UnlockConnector", "Operator request to release the connector lock", { connectorId:1 });
+    if (car && car.phase==="charging"){
+      srvResp(bay, "UnlockConnector", id, "UnlockFailed — the connector stays locked during an active transaction", { status:"UnlockFailed" });
+      opSay(bay.id+" · UnlockConnector → UnlockFailed — stop the session first, then unlock");
+    } else {
+      srvResp(bay, "UnlockConnector", id, "Unlocked", { status:"Unlocked" });
+      opResult(bay, "UnlockConnector", true, car ? "lock released — the driver can unplug" : "no EV connected — the connector is already free");
+    }
+  }
+  function opReserve(){
+    var bay = opBay();
+    var id = srvCall(bay, "ReserveNow", "Hold connector 1 for tag DEMO1234 · reservation "+(resCounter+1),
+      { connectorId:1, expiryDate:new Date(Date.now()+3600000).toISOString().replace(/\..*/,"Z"), idTag:"DEMO1234", reservationId:resCounter+1 });
+    if (bay.booted && !bay.car && !bay.reserved && bay.availability==="Operative" && !bay.faulted){
+      resCounter++; bay.reservationId = resCounter;
+      bay.reserved = true; bay.reserveT = 75;
+      srvResp(bay, "ReserveNow", id, "Accepted — connector held for DEMO1234", { status:"Accepted" });
+      statusNote(bay, "Reserved");
+      setBayStatus(bay, "Reserved", "held for DEMO1234");
+      opResult(bay, "ReserveNow", true, "bay held — auto traffic will skip it until the reservation is cancelled or expires");
+    } else {
+      var why = bay.car ? "connector is occupied" : bay.reserved ? "a reservation is already active" : bay.availability!=="Operative" ? "charger is out of service" : "charger is faulted";
+      srvResp(bay, "ReserveNow", id, "Rejected — "+why, { status:"Rejected" });
+      opResult(bay, "ReserveNow", false, why);
+    }
+  }
+  function opCancelReserve(){
+    var bay = opBay();
+    var id = srvCall(bay, "CancelReservation", "Cancel reservation "+(bay.reservationId || "—"), { reservationId: bay.reservationId || 0 });
+    if (bay.reserved){
+      srvResp(bay, "CancelReservation", id, "Accepted — reservation "+bay.reservationId+" cancelled", { status:"Accepted" });
+      bay.reserved = false;
+      statusNote(bay, "Available");
+      restoreBayStatus(bay);
+      opResult(bay, "CancelReservation", true, "the bay is open to everyone again");
+    } else {
+      srvResp(bay, "CancelReservation", id, "Rejected — no active reservation on this charger", { status:"Rejected" });
+      opResult(bay, "CancelReservation", false, "there is no reservation to cancel");
+    }
+  }
+  function opAvailability(){
+    var bay = opBay();
+    var target = bay.availability==="Operative" ? "Inoperative" : "Operative";
+    var id = srvCall(bay, "ChangeAvailability", "Set connector 1 "+target, { connectorId:1, type:target });
+    if (target==="Inoperative" && bay.car && bay.car.phase==="charging"){
+      srvResp(bay, "ChangeAvailability", id, "Scheduled — takes effect when the current transaction ends", { status:"Scheduled" });
+      bay.availPending = "Inoperative";
+      opSay(bay.id+" · ChangeAvailability → Scheduled — the charger goes out of service once this session ends");
+    } else {
+      srvResp(bay, "ChangeAvailability", id, "Accepted", { status:"Accepted" });
+      applyAvailability(bay, target);
+      opResult(bay, "ChangeAvailability", true, target==="Inoperative" ? "charger is out of service — auto traffic will skip it" : "charger is back in service");
+    }
+  }
+  function opReset(type){
+    var bay = opBay();
+    var id = srvCall(bay, "Reset", "Operator requested a "+type.toLowerCase()+" reset", { type:type });
+    srvResp(bay, "Reset", id, "Accepted", { status:"Accepted" });
+    if (bay.car){
+      bay.resetPending = true;
+      opSay(bay.id+" · Reset → Accepted — the charger reboots as soon as the current car leaves");
+    } else {
+      doReset(bay);
+      opResult(bay, "Reset", true, "charger rebooting — watch its BootNotification come back");
+    }
+  }
+  function opGetConfig(){
+    var bay = opBay();
+    var id = srvCall(bay, "GetConfiguration", "Read the charger's configuration keys", {});
+    srvResp(bay, "GetConfiguration", id, "HeartbeatInterval "+bay.hb+" s · firmware "+bay.fw+" · local list v"+bay.listVersion+" · 1 connector",
+      { configurationKey:[
+        { key:"HeartbeatInterval", readonly:false, value:String(bay.hb) },
+        { key:"MeterValueSampleInterval", readonly:false, value:"30" },
+        { key:"NumberOfConnectors", readonly:true, value:"1" },
+        { key:"LocalAuthorizeOffline", readonly:false, value:"true" },
+        { key:"AuthorizationCacheEnabled", readonly:false, value:"true" }
+      ], unknownKey:[] });
+    opResult(bay, "GetConfiguration", true, "keys returned — open the raw frame in the terminal to read them");
+  }
+  function opChangeConfig(){
+    var bay = opBay();
+    var next = bay.hb===30 ? 60 : bay.hb===60 ? 15 : 30;
+    var id = srvCall(bay, "ChangeConfiguration", "HeartbeatInterval: "+bay.hb+" s → "+next+" s", { key:"HeartbeatInterval", value:String(next) });
+    bay.hb = next;
+    srvResp(bay, "ChangeConfiguration", id, "Accepted", { status:"Accepted" });
+    opResult(bay, "ChangeConfiguration", true, "the charger now heartbeats every "+next+" s");
+  }
+  function opTrigger(requested){
+    var bay = opBay();
+    var id = srvCall(bay, "TriggerMessage", "Ask the charger to send a "+requested+" right now", { requestedMessage:requested, connectorId:1 });
+    srvResp(bay, "TriggerMessage", id, "Accepted", { status:"Accepted" });
+    opSay(bay.id+" · TriggerMessage → Accepted — "+requested+" incoming");
+    setTimeout(function(){
+      if (requested==="BootNotification"){
+        var b = callMsg(bay, "BootNotification", "Triggered by CSMS · SimWallbox 7.4 · fw "+bay.fw,
+          { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:bay.fw });
+        respMsg(bay, "BootNotification", b, "Accepted · heartbeat every "+bay.hb+" s", { currentTime:isoNow(), interval:bay.hb, status:"Accepted" });
+      } else if (requested==="StatusNotification"){
+        var s = callMsg(bay, "StatusNotification", "Triggered by CSMS · connector 1 is "+ocppStatus(bay),
+          { connectorId:1, errorCode:"NoError", status:ocppStatus(bay) });
+        respMsg(bay, "StatusNotification", s, "Acknowledged", {});
+      } else if (requested==="Heartbeat"){
+        var h = callMsg(bay, "Heartbeat", "Triggered by CSMS", {});
+        respMsg(bay, "Heartbeat", h, "Clock synced", { currentTime:isoNow() });
+      } else if (requested==="MeterValues"){
+        if (bay.car && bay.car.phase==="charging"){ bay.car.meterTimer = 0; note(bay.id+": triggered MeterValues — a fresh sample is on its way"); }
+        else note(bay.id+": trigger accepted, but there is no active transaction — no MeterValues to send");
+      }
+    }, 600);
+  }
+  function opSetProfile(){
+    var bay = opBay();
+    var id = srvCall(bay, "SetChargingProfile", "TxDefaultProfile · cap connector 1 at "+opLimit.toFixed(1)+" kW",
+      { connectorId:1, csChargingProfiles:{ chargingProfileId:1, stackLevel:0, chargingProfilePurpose:"TxDefaultProfile", chargingProfileKind:"Absolute",
+        chargingSchedule:{ chargingRateUnit:"W", duration:86400, chargingSchedulePeriod:[{ startPeriod:0, limit:opLimit*1000, numberPhases:1 }] } } });
+    bay.profile = { limitKw: opLimit };
+    srvResp(bay, "SetChargingProfile", id, "Accepted — profile stored on the charger", { status:"Accepted" });
+    if (bay.car && bay.car.phase==="charging")
+      opSay(bay.id+" · SetChargingProfile → Accepted — watch the car's draw drop to "+opLimit.toFixed(1)+" kW on the lot");
+    else
+      opSay(bay.id+" · SetChargingProfile → Accepted — the cap applies to sessions on this charger until cleared");
+    if (selectedBay===bay.idx) renderBayDetail();
+  }
+  function opComposite(){
+    var bay = opBay();
+    var lim = bay.profile ? bay.profile.limitKw*1000 : 7400;
+    var id = srvCall(bay, "GetCompositeSchedule", "Ask for the effective schedule · next 3600 s · watts", { connectorId:1, duration:3600, chargingRateUnit:"W" });
+    srvResp(bay, "GetCompositeSchedule", id, "Effective ceiling "+(lim/1000).toFixed(1)+" kW"+(bay.profile ? " — set by the active charging profile" : " — the charger's own maximum, no profile active"),
+      { status:"Accepted", connectorId:1, scheduleStart:isoNow(),
+        chargingSchedule:{ chargingRateUnit:"W", chargingSchedulePeriod:[{ startPeriod:0, limit:lim, numberPhases:1 }] } });
+    opResult(bay, "GetCompositeSchedule", true, "the charger reports a real ceiling of "+(lim/1000).toFixed(1)+" kW");
+  }
+  function opClearProfile(){
+    var bay = opBay();
+    var had = !!bay.profile;
+    var id = srvCall(bay, "ClearChargingProfile", "Remove profile id 1 from connector 1",
+      { id:1, connectorId:1, chargingProfilePurpose:"TxDefaultProfile", stackLevel:0 });
+    bay.profile = null;
+    srvResp(bay, "ClearChargingProfile", id, had ? "Accepted — cap removed" : "Accepted — no profile was set", { status:"Accepted" });
+    opSay(bay.id+" · ClearChargingProfile → Accepted — "+(had ? "charger is back to full power" : "nothing was capped anyway"));
+    if (selectedBay===bay.idx) renderBayDetail();
+  }
+
+  document.querySelectorAll("[data-op]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var op = btn.dataset.op;
+      if (op==="remote-start") opRemoteStart();
+      else if (op==="remote-stop") opRemoteStop();
+      else if (op==="unlock") opUnlock();
+      else if (op==="reserve") opReserve();
+      else if (op==="cancel-reserve") opCancelReserve();
+      else if (op==="availability") opAvailability();
+      else if (op==="reset-soft") opReset("Soft");
+      else if (op==="reset-hard") opReset("Hard");
+      else if (op==="get-config") opGetConfig();
+      else if (op==="change-config") opChangeConfig();
+      else if (op==="set-profile") opSetProfile();
+      else if (op==="composite") opComposite();
+      else if (op==="clear-profile") opClearProfile();
+      else if (op==="trigger-boot") opTrigger("BootNotification");
+      else if (op==="trigger-status") opTrigger("StatusNotification");
+      else if (op==="trigger-heartbeat") opTrigger("Heartbeat");
+      else if (op==="trigger-meter") opTrigger("MeterValues");
+    });
+  });
+  document.querySelectorAll("#opTargets [data-bay]").forEach(function(btn){
+    btn.addEventListener("click", function(){ selectBay(parseInt(btn.dataset.bay,10)); });
+  });
+  document.querySelectorAll("#opLimits [data-limit]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      opLimit = parseFloat(btn.dataset.limit);
+      document.querySelectorAll("#opLimits [data-limit]").forEach(function(x){ x.setAttribute("aria-pressed", x===btn ? "true" : "false"); });
+    });
+  });
+
+  /* ================= ambient full-protocol events ================= */
+  var eventIn = 24, eventIdx = 0;
+  var EVENT_KINDS = ["fault", "locallist", "firmware", "clearcache", "datatransfer"];
+  function idleBay(){
+    var l = bays.filter(function(b){ return b.booted && !b.car && !b.faulted && !b.updating; });
+    return l.length ? l[Math.floor(Math.random()*l.length)] : null;
+  }
+  function anyBay(){
+    var l = bays.filter(function(b){ return b.booted; });
+    return l.length ? l[Math.floor(Math.random()*l.length)] : null;
+  }
+  function evFault(bay){
+    bay.faulted = true;
+    setBayStatus(bay, "Faulted", "ground fault");
+    var id = callMsg(bay, "StatusNotification", "Connector 1 · Faulted — GroundFailure: the RCD tripped during a self-test",
+      { connectorId:1, errorCode:"GroundFailure", status:"Faulted", info:"RCD self-test failed" });
+    respMsg(bay, "StatusNotification", id, "Acknowledged — bay "+(bay.idx+1)+" flagged out of service", {});
+    note("CSMS auto-response: pulling a diagnostics bundle from "+bay.id+" before anyone drives out there");
+    setTimeout(function(){
+      var gid = srvCall(bay, "GetDiagnostics", "Upload diagnostics to the CSMS file store · 3 retries",
+        { location:"https://csms.lab/diag/"+bay.id+"/", retries:3, retryInterval:60 });
+      srvResp(bay, "GetDiagnostics", gid, "Upload starting · file "+bay.id+"-diag.tar.gz", { fileName: bay.id+"-diag.tar.gz" });
+      setTimeout(function(){
+        var d1 = callMsg(bay, "DiagnosticsStatusNotification", "Uploading the diagnostics bundle…", { status:"Uploading" });
+        respMsg(bay, "DiagnosticsStatusNotification", d1, "Keep going", {});
+        setTimeout(function(){
+          var d2 = callMsg(bay, "DiagnosticsStatusNotification", "Diagnostics uploaded", { status:"Uploaded" });
+          respMsg(bay, "DiagnosticsStatusNotification", d2, "Bundle received — the log shows a nuisance RCD trip, no hardware damage", {});
+          bay.faulted = false;
+          statusNote(bay, "Available");
+          restoreBayStatus(bay);
+          note(bay.id+" cleared its fault remotely — no site visit needed");
+        }, 2600);
+      }, 1400);
+    }, 1200);
+  }
+  function evFirmware(bay){
+    bay.updating = true;
+    var newFw = "1.1." + Math.floor(Math.random()*9);
+    var id = srvCall(bay, "UpdateFirmware", "Firmware "+newFw+" staged — the charger downloads and installs it itself",
+      { location:"https://csms.lab/fw/simwallbox-"+newFw+".bin", retrieveDate:isoNow(), retries:3, retryInterval:120 });
+    srvResp(bay, "UpdateFirmware", id, "Request stored — progress arrives as FirmwareStatusNotification", {});
+    setBayStatus(bay, "Updating fw", "do not unplug");
+    note(bay.id+" is updating to firmware "+newFw+" — it is out of service until it reboots");
+    ["Downloading","Downloaded","Installing","Installed"].forEach(function(st, i){
+      setTimeout(function(){
+        var fid = callMsg(bay, "FirmwareStatusNotification", "Firmware "+newFw+" · "+st, { status:st });
+        respMsg(bay, "FirmwareStatusNotification", fid, "Noted", {});
+        if (st==="Installed"){
+          setTimeout(function(){
+            bay.fw = newFw; bay.updating = false;
+            var bid = callMsg(bay, "BootNotification", "Rebooted on the new firmware · SimWallbox 7.4 · fw "+newFw,
+              { chargePointModel:"SimWallbox 7.4", chargePointVendor:"MuseLab", firmwareVersion:newFw });
+            respMsg(bay, "BootNotification", bid, "Accepted · heartbeat every "+bay.hb+" s", { currentTime:isoNow(), interval:bay.hb, status:"Accepted" });
+            restoreBayStatus(bay);
+            note(bay.id+" firmware update complete — now running "+newFw);
+          }, 900);
+        }
+      }, 1300*(i+1));
+    });
+  }
+  function evLocalList(bay){
+    bay.listVersion++;
+    var v = bay.listVersion;
+    var id = srvCall(bay, "SendLocalList", "Push local authorization list v"+v+" · full update · 3 tags",
+      { listVersion:v, updateType:"Full", localAuthorizationList:[
+        { idTag:"DEMO1234", idTagInfo:{ status:"Accepted" } },
+        { idTag:"RFID88A1", idTagInfo:{ status:"Accepted" } },
+        { idTag:"UPIWALLET7", idTagInfo:{ status:"Accepted" } } ] });
+    srvResp(bay, "SendLocalList", id, "List v"+v+" stored on the charger", { status:"Accepted" });
+    var gid = srvCall(bay, "GetLocalListVersion", "Confirm which list version the charger is holding", {});
+    srvResp(bay, "GetLocalListVersion", gid, "currentLocalListVersion = "+v, { currentLocalListVersion:v });
+    bay.offlineAuthNext = true;
+    note(bay.id+" can now authorise DEMO-class tags offline — the next authorisation there will be answered from local list v"+v);
+  }
+  function evClearCache(bay){
+    var id = srvCall(bay, "ClearCache", "Flush the charger's authorization cache", {});
+    srvResp(bay, "ClearCache", id, "Accepted — cache emptied", { status:"Accepted" });
+    note(bay.id+": authorization cache cleared — the next RFID tap is checked live against the CSMS");
+  }
+  function evDataTransfer(bay){
+    var temp = (38 + Math.random()*7).toFixed(1);
+    var id = callMsg(bay, "DataTransfer", "Vendor telemetry · connector temperature "+temp+" °C",
+      { vendorId:"MuseLab", messageId:"ConnectorTemp", data:temp+"C" });
+    respMsg(bay, "DataTransfer", id, "Accepted", { status:"Accepted" });
+  }
+  function runAmbient(){
+    var kind = EVENT_KINDS[eventIdx % EVENT_KINDS.length]; eventIdx++;
+    var b;
+    if (kind==="fault"){ b = idleBay(); if (b) evFault(b); }
+    else if (kind==="firmware"){ b = idleBay(); if (b) evFirmware(b); }
+    else if (kind==="locallist"){ b = anyBay(); if (b) evLocalList(b); }
+    else if (kind==="clearcache"){ b = anyBay(); if (b) evClearCache(b); }
+    else { b = anyBay(); if (b) evDataTransfer(b); }
+  }
 
   /* ================= controls ================= */
   var btnRun = $("#btnRun");
@@ -811,6 +1353,7 @@
     note("Log cleared — feed continues");
   });
 
+  selectBay(0);
   updateStats();
 })();
 </script>
