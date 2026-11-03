@@ -12,7 +12,7 @@ stop, billing summary — with every raw OCPP frame logged.
 | `csms_server.py` | The CSMS (central system). Listens on `ws://localhost:9000/<charge_point_id>`. |
 | `charge_point_sim.py` | A simulated wallbox ("SIM_001") that runs one full 30 s session at 7.4 kW. |
 | `transcript.log` / `transcript.txt` | Captured run: every raw OCPP JSON frame from both sides, timestamped, plus decoded notes and the server's SESSION SUMMARY. |
-| `requirements.txt` | Pinned dependencies (`ocpp==2.1.0`, `websockets==17.4`). |
+| `requirements.txt` | Pinned dependencies (`ocpp==2.0.0`, `websockets==17.4`). Pinned to 2.0.0 because 2.1.0 requires Python ≥3.11 and Fly's Buildpack builder used Python 3.10. |
 | `venv/` | Python 3.12 virtualenv with the dependencies installed. |
 
 ## What the CSMS does

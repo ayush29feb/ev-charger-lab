@@ -1,0 +1,32 @@
+# Fly.io config for the live OCPP lab (repo-root copy of live/fly.toml,
+# so `fly deploy` works from the repo root as well as from live/).
+# App names are globally unique on Fly.
+app = "ev-charger-lab"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# The visualizer page (Python serves the live/ folder over HTTP on 8080)
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+# The OCPP WebSocket endpoint + /observe feed (port 9001).
+# TLS is terminated at Fly's edge, so chargers/browsers use wss://<app>.fly.dev:9001/<cpId>
+[[services]]
+  internal_port = 9001
+  protocol = "tcp"
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 9001
+    handlers = ["tls"]
