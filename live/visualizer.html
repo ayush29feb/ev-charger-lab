@@ -4,86 +4,157 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" href="data:," />
-<title>Simplecharge — Society Charging, Live</title>
+<title>Simplecharge — Society Simulator, Live on the Real Server</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
          background: #070b14; color: #e6edf3; }
-  header { padding: 14px 20px; border-bottom: 1px solid #1c2940;
-           display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center;
+  header { padding: 14px 20px 10px; border-bottom: 1px solid #1c2940;
            background: #0a101e; }
+  header .row1 { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
   header h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: .01em; }
   header h1 .zap { color: #22d3ee; }
-  header .sub { color: #7d8aa0; font-size: 12.5px; width: 100%; }
+  header .sub { color: #7d8aa0; font-size: 12.5px; margin-top: 4px; }
   .pill { font-size: 12px; padding: 3px 11px; border-radius: 20px; border: 1px solid #1c2940;
           display: inline-flex; align-items: center; gap: 6px; }
   .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #f85149; }
   .pill.ok { color: #34d399; border-color: #14532d; }
-  .pill.ok .dot { background: #34d399; box-shadow: 0 0 6px #34d399; }
+  .pill.ok .dot { background: #34d399; }
   .pill.bad { color: #f87171; border-color: #5b1d1d; }
-  #clock { margin-left: auto; font-size: 13px; color: #9fb2cc;
+  .pill.band { color: #fbbf24; border-color: #6b4e12; font-weight: 600; }
+  #clock { margin-left: auto; font-size: 14px; color: #9fb2cc; font-weight: 600;
            font-variant-numeric: tabular-nums; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .controls .lbl { font-size: 12px; color: #7d8aa0; text-transform: uppercase; letter-spacing: .08em; }
+  button { background: #16233a; color: #e6edf3; border: 1px solid #2b3c5c;
+           border-radius: 7px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
+  button:hover:not(:disabled) { background: #1e3050; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: #047857; border-color: #059669; }
+  button.primary:hover:not(:disabled) { background: #059669; }
+  button.spdbtn.on { background: #0369a1; border-color: #38bdf8; color: #fff; }
+  button.warn { border-color: #6b4e12; color: #fbbf24; }
+  #tariffbar { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 20px;
+               border-bottom: 1px solid #1c2940; background: #0a101e; font-size: 12.5px;
+               color: #9fb2cc; }
+  #tariffbar .tb b { color: #e6edf3; }
+  #tariffbar .tb.on { color: #fbbf24; }
+  #tariffbar .tb.on b { color: #fbbf24; }
+  #tariffbar .tbname { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
 
-  /* ---------- ledger strip ---------- */
-  #ledger { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center;
-            padding: 10px 20px; border-bottom: 1px solid #1c2940; background: #0a101e;
-            font-size: 13.5px; }
-  #ledger .stat b { color: #22d3ee; font-size: 15px; }
-  #ledger .wallets { margin-left: auto; display: flex; flex-wrap: wrap; gap: 4px 16px;
-                     font-size: 12.5px; color: #9fb2cc; }
-  #ledger .wallets b { color: #2dd4bf; }
-
-  /* ---------- live power strip ---------- */
-  #power { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center;
-           padding: 10px 20px; border-bottom: 1px solid #1c2940; background: #0a101e;
-           font-size: 13.5px; }
-  #power .pstat b { color: #22d3ee; font-size: 15px; }
-  #power .pnote { display: block; font-size: 11px; color: #63738c; }
-  #power .tf { flex: 1; min-width: 280px; max-width: 560px; }
-  #power .tf-top { display: flex; justify-content: space-between; font-size: 12.5px;
-                   color: #9fb2cc; margin-bottom: 4px; }
-  #power .tf-top b { color: #e6edf3; }
-  #power .tfbar { height: 10px; background: #1c2940; border-radius: 5px; overflow: hidden; }
-  #power .tffill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5b7, #34d399);
-                   transition: width .5s, background .5s; }
-  #power .tffill.amber { background: linear-gradient(90deg, #d97706, #fbbf24); }
-  #power .tffill.red { background: linear-gradient(90deg, #b91c1c, #ef4444); }
-  #power .tf-note { font-size: 11px; color: #63738c; margin-top: 4px; }
-
-  main { display: grid; grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr);
-         gap: 0; }
-  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
-  section { padding: 14px 20px; }
+  main { display: grid; grid-template-columns: minmax(0, 8fr) minmax(320px, 4fr); gap: 0; }
+  @media (max-width: 1080px) { main { grid-template-columns: 1fr; } }
+  section { padding: 18px 22px; }
   section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em;
                color: #7d8aa0; margin: 2px 0 12px; }
+  #rail { border-left: 1px solid #1c2940; }
+  @media (max-width: 1080px) { #rail { border-left: none; border-top: 1px solid #1c2940; } }
+  #rail section { padding: 14px 18px; border-bottom: 1px solid #14213a; }
+  .panel .stat { display: block; font-size: 13.5px; margin: 3px 0; }
+  .panel .stat b { color: #22d3ee; font-size: 15px; }
+  .wallets { font-size: 12.5px; color: #9fb2cc; margin-top: 8px; line-height: 1.9; }
+  .wallets b { color: #2dd4bf; }
+  .tf-top { display: flex; justify-content: space-between; font-size: 12.5px;
+            color: #9fb2cc; margin: 8px 0 4px; }
+  .tf-top b { color: #e6edf3; }
+  .tfbar { height: 10px; background: #1c2940; border-radius: 5px; overflow: hidden; }
+  .tffill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5b7, #34d399);
+            transition: width .5s, background .5s; }
+  .tffill.amber { background: linear-gradient(90deg, #d97706, #fbbf24); }
+  .tffill.red { background: linear-gradient(90deg, #b91c1c, #ef4444); }
+  .tf-note { font-size: 11px; color: #63738c; margin-top: 4px; }
+  #bayrows .brow { display: flex; justify-content: space-between; font-size: 12.5px;
+                   padding: 3px 0; border-bottom: 1px dashed #101a2c; color: #c9d4e6; }
+  #bayrows .brow .st { font-weight: 600; }
+  .st.Available { color: #34d399; } .st.Charging { color: #38bdf8; }
+  .st.Preparing { color: #fbbf24; } .st.Finishing { color: #c4b5fd; }
+  .st.Offline, .st.Unavailable { color: #7d8aa0; } .st.Faulted { color: #f87171; }
+  .st.Reserved { color: #c4b5fd; }
+  #payments .pay { font-size: 12.5px; padding: 5px 0; border-bottom: 1px dashed #101a2c;
+                   color: #c9d4e6; line-height: 1.45; }
+  #payments .pay b { color: #fbbf24; }
+  #payments .pay .mix { color: #7d8aa0; font-size: 11.5px; display: block; }
+  #payments .none { font-size: 12.5px; color: #63738c; }
 
-  /* ---------- bays ---------- */
+  /* ---------- animated society map ---------- */
+  #scene { position: relative; height: 480px; border: 1px solid #1c2940; border-radius: 12px;
+           background: linear-gradient(#081020 62%, #0a0f1c 62%); overflow: hidden; }
+  #building { position: absolute; left: 2%; top: 4%; width: 23%; height: 33%;
+              background: #0d1830; border: 1px solid #24344f; border-radius: 8px; padding: 8px; }
+  #building .solargrid { height: 46%; border-radius: 4px;
+              background:
+                repeating-linear-gradient(0deg, #164e63 0 10px, #0b2436 10px 12px),
+                repeating-linear-gradient(90deg, #164e63 0 16px, #0b2436 16px 18px);
+              background-blend-mode: multiply; border: 1px solid #155e75; }
+  #building .bld-name { font-size: 12.5px; font-weight: 700; margin-top: 7px; }
+  #building .bld-solar { font-size: 12px; color: #fbbf24; margin-top: 2px; }
+  #building .bld-solar .dim { color: #63738c; font-size: 11px; }
+  .infobox { position: absolute; top: 4%; width: 24%; background: #0d1830;
+             border: 1px solid #24344f; border-radius: 8px; padding: 9px 12px; }
+  #dlm { left: 38%; }
+  #xfmr { right: 2%; width: 23%; }
+  .infobox .t { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7d8aa0; }
+  .infobox .v { font-size: 16px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .infobox .v b { color: #22d3ee; }
+  .infobox .s { font-size: 12px; color: #fbbf24; margin-top: 2px; }
+  .infobox .dlmbar { height: 7px; background: #1c2940; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .infobox .dlmfill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5b7, #34d399);
+                      transition: width .5s, background .5s; }
+  .infobox .dlmfill.amber { background: linear-gradient(90deg, #d97706, #fbbf24); }
+  .infobox .dlmfill.red { background: linear-gradient(90deg, #b91c1c, #ef4444); }
+  #busline { position: absolute; left: 2%; right: 2%; top: 40.5%; height: 2px; background: #24344f; }
+  #slots { position: absolute; left: 2%; right: 2%; top: 42%; height: 40%; display: flex; gap: 8px; }
+  .slot { flex: 1; border-left: 2px dashed #24344f; border-right: 2px dashed #24344f;
+          display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+  .slot .ped { width: 30px; height: 22px; border-radius: 4px; background: #16233a;
+               border: 1px solid #2b3c5c; color: #7d8aa0; font-size: 12px;
+               display: flex; align-items: center; justify-content: center; }
+  .slot .ped.on { color: #7dd3fc; border-color: #38bdf8; }
+  .slot .spacer { flex: 1; }
+  .slot .slotbar { width: 82%; height: 7px; background: #1c2940; border-radius: 4px; overflow: hidden; }
+  .slot .slotfill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5b7, #34d399);
+                    transition: width .5s; }
+  .slot .slotflat { font-size: 11.5px; color: #9fb2cc; margin-top: 5px; font-weight: 600; }
+  .slot .slotstatus { font-size: 11px; margin-top: 1px; font-weight: 600; }
+  .slotstatus.Available { color: #34d399; } .slotstatus.Charging { color: #38bdf8; }
+  .slotstatus.Preparing { color: #fbbf24; } .slotstatus.Finishing { color: #c4b5fd; }
+  .slotstatus.Offline, .slotstatus.Unavailable { color: #63738c; }
+  .slotstatus.Faulted { color: #f87171; } .slotstatus.Reserved { color: #c4b5fd; }
+  .car2 { position: absolute; width: 58px; height: 86px; margin-left: -29px;
+          transition: left 1.05s ease, top 1.05s ease, opacity .5s ease; pointer-events: none; }
+  .carbody { width: 100%; height: 100%; border-radius: 15px; border: 2px solid #475569;
+             position: relative; }
+  .carbody:before { content: ""; position: absolute; left: 7px; right: 7px; top: 13px; height: 16px;
+                    border-radius: 5px; background: #7dd3fc; opacity: .5; }
+  .carbody:after { content: ""; position: absolute; left: 9px; right: 9px; bottom: 10px; height: 11px;
+                   border-radius: 5px; background: #7dd3fc; opacity: .3; }
+  .car2.charging .carbody { border-color: #7dd3fc; }
+  .cable2 { position: absolute; width: 3px; margin-left: -1px; top: 42%; height: 3.4%;
+            background: #38bdf8;
+            opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #road { position: absolute; left: 0; right: 0; bottom: 0; height: 11%;
+          border-top: 2px solid #1c2940; display: flex; justify-content: space-between;
+          align-items: center; padding: 0 16px; font-size: 12px; color: #63738c;
+          letter-spacing: .05em; }
+
+  /* ---------- bay cards ---------- */
   .bays { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 1100px) { .bays { grid-template-columns: 1fr; } }
-  .bay { border: 1px solid #1c2940; border-radius: 12px; padding: 12px 14px;
-         background: #0d1526; }
+  @media (max-width: 1250px) { .bays { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 760px) { .bays { grid-template-columns: 1fr; } }
+  .bay { border: 1px solid #1c2940; border-radius: 12px; padding: 12px 14px; background: #0d1526; }
   .bay .top { display: flex; justify-content: space-between; align-items: center; }
   .bay .name { font-weight: 700; font-size: 15px; }
   .chip { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 12px;
           background: #334155; color: #e6edf3; }
-  .chip.Available { background: #15803d; }
-  .chip.Charging { background: #0369a1; }
-  .chip.Preparing { background: #b45309; }
-  .chip.Finishing { background: #7c3aed; }
-  .chip.Faulted { background: #b91c1c; }
-  .chip.Unavailable, .chip.Offline { background: #475569; }
+  .chip.Available { background: #15803d; } .chip.Charging { background: #0369a1; }
+  .chip.Preparing { background: #b45309; } .chip.Finishing { background: #7c3aed; }
+  .chip.Faulted { background: #b91c1c; } .chip.Unavailable, .chip.Offline { background: #475569; }
   .chip.Reserved { background: #6d28d9; }
   .resident { font-size: 12.5px; color: #9fb2cc; margin-top: 3px; }
   .resident b { color: #e6edf3; font-weight: 600; }
   .resident .tag { color: #2dd4bf; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
-  .carzone { height: 62px; display: flex; align-items: center; gap: 10px; margin-top: 4px; }
-  .car { font-size: 40px; transform: translateX(-70px); opacity: 0;
-         transition: transform .8s ease, opacity .8s ease; }
-  .car.in { transform: translateX(0); opacity: 1; }
-  .cable { font-size: 19px; opacity: 0; transition: opacity .3s; }
-  .cable.on { opacity: 1; }
-  .batt { flex: 1; }
+  .batt { margin-top: 9px; }
   .battbar { height: 10px; background: #1c2940; border-radius: 5px; overflow: hidden; }
   .battfill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5b7, #34d399);
               transition: width .5s; }
@@ -94,130 +165,228 @@
   .readouts .cost b { color: #fbbf24; }
   .srv { font-size: 11px; color: #63738c; margin-top: 6px; min-height: 14px; }
   .btns { display: flex; gap: 8px; margin-top: 10px; }
-  button { background: #16233a; color: #e6edf3; border: 1px solid #2b3c5c;
-           border-radius: 7px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
-  button:hover:not(:disabled) { background: #1e3050; }
-  button:disabled { opacity: .4; cursor: default; }
-  button.primary { background: #047857; border-color: #059669; }
-  button.primary:hover:not(:disabled) { background: #059669; }
 
   /* ---------- live log ---------- */
-  #logwrap { border-left: 1px solid #1c2940; display: flex; flex-direction: column; }
-  @media (max-width: 980px) { #logwrap { border-left: none; border-top: 1px solid #1c2940; } }
-  #log { flex: 1; overflow-y: auto; font-size: 12.5px; line-height: 1.5;
-         background: #05080f; border: 1px solid #1c2940; border-radius: 8px;
-         padding: 8px 11px; height: 520px; }
+  #log { overflow-y: auto; font-size: 12.5px; line-height: 1.5; background: #05080f;
+         border: 1px solid #1c2940; border-radius: 8px; padding: 8px 11px; height: 400px; }
   #log .ln { padding: 1.5px 0; border-bottom: 1px dashed #101a2c; word-break: break-word; }
-  #log .t { color: #55677f; font-size: 11px; margin-right: 7px;
-            font-variant-numeric: tabular-nums; }
-  #log .cp { color: #7dd3fc; }
-  #log .csms { color: #93c5fd; }
+  #log .t { color: #55677f; font-size: 11px; margin-right: 7px; font-variant-numeric: tabular-nums; }
+  #log .cp { color: #7dd3fc; } #log .csms { color: #93c5fd; }
   #log .sum { color: #fbbf24; font-weight: 600; }
-  #log .ok { color: #34d399; }
-  #log .err { color: #f87171; }
-  #log .dim { color: #7d8aa0; }
-  .note { font-size: 12px; color: #63738c; padding: 0 20px 14px; line-height: 1.5; }
+  #log .ok { color: #34d399; } #log .err { color: #f87171; } #log .dim { color: #7d8aa0; }
+  .note { font-size: 12px; color: #63738c; padding: 0 20px 16px; line-height: 1.55; }
   .note code { color: #9fb2cc; }
 </style>
 </head>
 <body>
 <header>
-  <h1><span class="zap">⚡</span> Simplecharge — Society Charging, Live</h1>
-  <span id="obsPill" class="pill bad"><span class="dot"></span>connecting to server…</span>
-  <span id="clock">—</span>
-  <span class="sub">Three charging bays in one housing society, running on the real OCPP 1.6J
-    server — every session below is genuine protocol traffic, billed by the server at ₹18/kWh.</span>
+  <div class="row1">
+    <h1><span class="zap">⚡</span> Simplecharge — Society Simulator</h1>
+    <span id="obsPill" class="pill bad"><span class="dot"></span>connecting to server…</span>
+    <span id="bandPill" class="pill band">— · ₹—/kWh</span>
+    <span id="clock">—</span>
+  </div>
+  <div class="sub">Six charging bays in one housing society, running on the <b>real</b> OCPP 1.6J
+    server — every car below runs a genuine protocol session and is billed by the server with
+    time-of-day pricing. Play the traffic and watch a day roll by.</div>
+  <div class="controls">
+    <span class="lbl">Traffic</span>
+    <button class="primary" id="btnTraffic">▶ Play traffic</button>
+    <span class="lbl">Speed</span>
+    <button class="spdbtn on" id="spd1">1×</button>
+    <button class="spdbtn" id="spd3">3×</button>
+    <button class="spdbtn" id="spd10">10×</button>
+    <button class="spdbtn" id="spd30">30×</button>
+    <button class="warn" id="btnReset">Reset day</button>
+    <span class="lbl" id="simNote">simulation clock = real time · speed compresses time for chargers too</span>
+  </div>
 </header>
 
-<div id="ledger">
-  <span class="stat">Sessions <b id="tSess">0</b></span>
-  <span class="stat">Energy delivered <b id="tKwh">0.000 kWh</b></span>
-  <span class="stat">Collected <b id="tRev">₹0.00</b></span>
-  <span class="wallets" id="wallets"><span>Resident wallets (from server): …</span></span>
-</div>
-
-<div id="power">
-  <span class="pstat">⚡ Charging now <b id="pChg">0.00 kW</b></span>
-  <div class="tf">
-    <div class="tf-top"><span>Transformer load</span>
-      <span><b id="pTfKw">— kW</b> · <b id="pTfPct">—%</b> of 90 kW limit</span></div>
-    <div class="tfbar"><div class="tffill" id="pTfFill"></div></div>
-    <div class="tf-note">building base load 25 kW (demo assumption) + live charging · transformer limit 90 kW (demo assumption)</div>
-  </div>
-  <span class="pstat">☀️ Solar (modelled) <b id="pSolar">0.0 kW</b>
-    <span class="pnote">30 kWp rooftop curve by time of day — not metered</span></span>
+<div id="tariffbar">
+  <span class="tbname">Server tariff (₹/kWh)</span>
+  <span class="tb" id="tb-night"><b>Night</b> 23:00–06:00 · ₹10</span>
+  <span class="tb" id="tb-solar"><b>Solar hours</b> 09:00–16:00 · ₹12</span>
+  <span class="tb" id="tb-standard"><b>Standard</b> other hours · ₹14</span>
+  <span class="tb" id="tb-peak"><b>Evening peak</b> 17:00–22:00 · ₹18</span>
 </div>
 
 <main>
-  <section id="lot">
-    <h2>Society charging bays</h2>
-    <div class="bays" id="bays"></div>
-  </section>
-  <section id="logwrap">
-    <h2>Live log — what the server sees</h2>
-    <div id="log"></div>
-  </section>
+  <div id="leftcol">
+    <section>
+      <h2>Society map — live from the server</h2>
+      <div id="scene">
+        <div id="building">
+          <div class="solargrid"></div>
+          <div class="bld-name">Tower A–D</div>
+          <div class="bld-solar">☀ <span id="sceneSolar">0.0 kW</span> <span class="dim">rooftop solar (modelled)</span></div>
+        </div>
+        <div class="infobox" id="dlm">
+          <div class="t">Dynamic Load Manager</div>
+          <div class="v"><b id="dlmKw">25.0</b> / 90 kW</div>
+          <div class="dlmbar"><div class="dlmfill" id="dlmFill"></div></div>
+        </div>
+        <div class="infobox" id="xfmr">
+          <div class="t">⚡ Transformer</div>
+          <div class="v"><b id="xfPct">28%</b> load</div>
+          <div class="s" id="xfBand">— · ₹—/kWh</div>
+        </div>
+        <div id="busline"></div>
+        <div id="slots"></div>
+        <div id="cars"></div>
+        <div id="road"><span>◀ GATE IN</span><span>visitor parking</span><span>TO TOWERS ▶</span></div>
+      </div>
+    </section>
+    <section>
+      <h2>Charging bays — drive one yourself</h2>
+      <div class="bays" id="bays"></div>
+    </section>
+    <section>
+      <h2>Live log — what the server sees</h2>
+      <div id="log"></div>
+    </section>
+  </div>
+
+  <aside id="rail">
+    <section class="panel">
+      <h2>Live power</h2>
+      <span class="stat">⚡ Charging now <b id="pChg">0.00 kW</b></span>
+      <div class="tf-top"><span>Transformer load</span>
+        <span><b id="pTfKw">— kW</b> · <b id="pTfPct">—%</b> of 90 kW</span></div>
+      <div class="tfbar"><div class="tffill" id="pTfFill"></div></div>
+      <div class="tf-note">building base load 25 kW (demo assumption) + live charging · limit 90 kW (demo assumption) · display only, no throttling</div>
+      <span class="stat" style="margin-top:8px">☀️ Solar (modelled) <b id="pSolar">0.0 kW</b></span>
+      <div class="tf-note">30 kWp rooftop curve over the simulation clock — not metered</div>
+    </section>
+    <section class="panel">
+      <h2>Bays</h2>
+      <div id="bayrows"></div>
+    </section>
+    <section class="panel">
+      <h2>Ledger — billed by the server</h2>
+      <span class="stat">Sessions <b id="tSess">0</b></span>
+      <span class="stat">Energy delivered <b id="tKwh">0.000 kWh</b></span>
+      <span class="stat">Collected <b id="tRev">₹0.00</b></span>
+      <div class="wallets" id="wallets"><span>Resident wallets (from server): …</span></div>
+    </section>
+    <section class="panel">
+      <h2>Payments</h2>
+      <div id="payments"></div>
+    </section>
+  </aside>
 </main>
 
 <p class="note">
   Each bay is a real OCPP 1.6J charge point running in this page: it boots, authorizes the
   resident's RFID tag against their server-side wallet, starts a transaction, streams meter
-  values, and stops — the Python CSMS does the billing. Plug a car in and watch the log.
-  Tags DEMO1234 / AYUSH001 / PRIYA002 / RAHUL003 hold wallets on the server; unknown tags are rejected.
+  values stamped with the simulation clock, and stops — the Python CSMS prices every interval
+  by the tariff band in force at its timestamp and debits the wallet. Traffic mode simply
+  drives the same bays automatically. A real charger pointed at this server would be billed
+  identically. Tags DEMO1234 / AYUSH001 / PRIYA002 / RAHUL003 / MEERA004 / ARJUN005 hold
+  wallets on the server; unknown tags are rejected. “Reset day” restarts the page-side clock
+  and tallies; server wallets persist.
 </p>
 
 <script>
 "use strict";
 /* =====================================================================
-   Simplecharge — Society Charging, Live.
-   The three bays below are REAL OCPP 1.6J charge-point clients written in
-   JavaScript: each holds its own WebSocket to the Python CSMS and speaks
-   genuine [2,id,"Action",{...}] / [3,id,{...}] frames. The log and the
-   ledger are fed by the CSMS /observe socket, which relays the exact wire
-   strings plus server-computed session summaries — nothing here invents
-   sessions or numbers.
+   Simplecharge — Society Simulator, live on the real OCPP server.
+   Six bays, each a REAL OCPP 1.6J charge-point client in JavaScript
+   (genuine [2,id,"Action",{...}] frames over its own WebSocket to the
+   Python CSMS). The animated map, the log, the ledger and the payments
+   are all fed by the CSMS /observe socket — exact wire strings plus
+   server-computed summaries. The page adds a simulation clock and a
+   traffic engine on top: at speed, the clock, the solar curve, the
+   meter timestamps AND the delivered energy all compress together, so
+   the server's time-of-use pricing bills accelerated sessions in the
+   bands they actually ran in.
    ===================================================================== */
 
 var HOST = location.hostname || "localhost";
 var WS_BASE = (location.protocol === "https:" ? "wss://" : "ws://") + HOST + ":9001";
-var TARIFF_INR = 18.0;          // matches the CSMS rate (server does the real billing)
 var BATTERY_KWH = 40.0;
 var BASE_POWER_W = 7400.0;
 var VOLTAGE_V = 230.0;
-var METER_MS = 2000;
+var METER_MS = 500;
 
-/* bay id -> resident (name shown on the card + the RFID tag the server
-   checks against its wallet table) */
+/* Time-of-use tariff — page mirror of the CSMS bands (display + running
+   estimates only; the server does the authoritative billing). */
+var BANDS = {
+  night:    { label: "Night",        rate: 10 },
+  solar:    { label: "Solar hours",  rate: 12 },
+  peak:     { label: "Evening peak", rate: 18 },
+  standard: { label: "Standard",     rate: 14 }
+};
+function bandForHour(h) {
+  if (h >= 23 || h < 6) return "night";
+  if (h >= 9 && h < 16) return "solar";
+  if (h >= 17 && h < 22) return "peak";
+  return "standard";
+}
+
+/* bay id -> resident (flat + name shown on the map/card + the RFID tag
+   the server checks against its wallet table) */
 var BAYS = [
-  { id: "BAY-01", resident: "Flat A-302 · Demo Resident", tag: "DEMO1234" },
-  { id: "BAY-02", resident: "Flat B-1202 · Ayush",        tag: "AYUSH001" },
-  { id: "BAY-03", resident: "Flat C-1801 · Priya",        tag: "PRIYA002" }
+  { id: "BAY-01", flat: "B-1202", resident: "Meera", tag: "MEERA004", color: "#7c3aed" },
+  { id: "BAY-02", flat: "A-302",  resident: "Ayush", tag: "AYUSH001", color: "#0369a1" },
+  { id: "BAY-03", flat: "C-1801", resident: "Priya", tag: "PRIYA002", color: "#047857" },
+  { id: "BAY-04", flat: "A-503",  resident: "Rahul", tag: "RAHUL003", color: "#b45309" },
+  { id: "BAY-05", flat: "D-904",  resident: "Arjun", tag: "ARJUN005", color: "#be185d" },
+  { id: "BAY-06", flat: "B-707",  resident: "Demo",  tag: "DEMO1234", color: "#475569" }
 ];
 
-function isoNow() { return new Date().toISOString().replace(/\.\d+Z$/, "Z"); }
 function esc(s) {
   return String(s).replace(/[&<>"']/g, function (c) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
   });
 }
 function rand(min, max) { return min + Math.random() * (max - min); }
+function pad2(n) { return (n < 10 ? "0" : "") + n; }
 
-/* ---------------- clock ---------------- */
-var clockEl = document.getElementById("clock");
-function tickClock() {
-  clockEl.textContent = new Date().toLocaleString(undefined, {
-    weekday: "short", hour: "2-digit", minute: "2-digit", second: "2-digit"
-  });
+/* ---------------- simulation clock ----------------
+   Starts at the current real time and advances at SIM.speed. Drives the
+   header clock, the tariff band, the solar curve and every timestamp
+   the charge points send — so time-of-use pricing follows sim time. */
+var SIM = { speed: 1, playing: false, nowMs: Date.now(), nextArrivalMs: 0 };
+function simDate() { return new Date(SIM.nowMs); }
+function isoSim() {
+  var d = simDate();
+  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) +
+         "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" +
+         pad2(d.getSeconds()) + "Z";
 }
-tickClock();
-setInterval(tickClock, 1000);
+function simClockText() {
+  var d = simDate();
+  return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
+}
+function simBand() { return bandForHour(simDate().getHours()); }
+
+var lastRealTick = Date.now();
+function simTick() {
+  var nowReal = Date.now();
+  var dt = nowReal - lastRealTick;
+  lastRealTick = nowReal;
+  if (dt > 0) SIM.nowMs += dt * SIM.speed;
+  var d = simDate();
+  var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  document.getElementById("clock").textContent =
+    "SIM " + days[d.getDay()] + " " + simClockText() +
+    (SIM.speed !== 1 ? " · " + SIM.speed + "×" : "");
+  var bk = simBand(), band = BANDS[bk];
+  document.getElementById("bandPill").textContent =
+    band.label + " · ₹" + band.rate + "/kWh";
+  document.getElementById("xfBand").textContent =
+    band.label + " · ₹" + band.rate + "/kWh";
+  ["night", "solar", "standard", "peak"].forEach(function (k) {
+    document.getElementById("tb-" + k).className = "tb" + (k === bk ? " on" : "");
+  });
+  trafficTick();
+  renderPower();
+}
 
 /* ---------------- live log ---------------- */
 var logEl = document.getElementById("log");
-var LOG_CAP = 120;
+var LOG_CAP = 140;
 var logCounts = {};
-/* High-frequency lines (meter values, empty acks) are shown 1-in-N so the
-   log stays readable; they are still real frames, just sampled. */
 function sampled(key, n) {
   logCounts[key] = (logCounts[key] || 0) + 1;
   return logCounts[key] % n === 1;
@@ -225,8 +394,7 @@ function sampled(key, n) {
 function logLine(html, cls) {
   var div = document.createElement("div");
   div.className = "ln" + (cls ? " " + cls : "");
-  var t = new Date().toLocaleTimeString(undefined, { hour12: false });
-  div.innerHTML = '<span class="t">' + esc(t) + "</span>" + html;
+  div.innerHTML = '<span class="t">' + esc(simClockText()) + "</span>" + html;
   logEl.insertBefore(div, logEl.firstChild);
   while (logEl.children.length > LOG_CAP) logEl.removeChild(logEl.lastChild);
 }
@@ -242,7 +410,7 @@ function describeFrame(msg) {
   if (f[0] === 2) {
     var action = f[2], p = f[3] || {}, extra = "";
     if (action === "MeterValues") {
-      if (!sampled(msg.cpId + ":mv", 6)) return null;
+      if (!sampled(msg.cpId + ":mv", 8)) return null;
       var mv = (p.meterValue && p.meterValue[0] && p.meterValue[0].sampledValue) || [];
       var pw = null, rg = null;
       mv.forEach(function (s) {
@@ -253,7 +421,7 @@ function describeFrame(msg) {
               (rg !== null ? " · meter " + Math.round(Number(rg)) + " Wh" : "");
       return { html: arrow + "MeterValues" + esc(extra), cls: "dim" };
     }
-    if (action === "Heartbeat") return null; // noise; connections show elsewhere
+    if (action === "Heartbeat") return null;
     if (action === "Authorize") extra = " · tag " + (p.idTag || "");
     else if (action === "StartTransaction") extra = " · tag " + (p.idTag || "") + " · meter starts at " + p.meterStart + " Wh";
     else if (action === "StopTransaction") extra = " · meter stops at " + p.meterStop + " Wh" + (p.reason ? " · " + p.reason : "");
@@ -264,7 +432,7 @@ function describeFrame(msg) {
   if (f[0] === 3) {
     var res = f[2] || {};
     if (Object.keys(res).length === 0) {
-      if (!sampled(msg.cpId + ":ack", 6)) return null;
+      if (!sampled(msg.cpId + ":ack", 8)) return null;
       return { html: arrow + "ack", cls: "dim" };
     }
     if (res.idTagInfo && res.idTagInfo.status) {
@@ -285,8 +453,10 @@ function describeFrame(msg) {
   return null;
 }
 
-/* ---------------- ledger (server numbers only) ---------------- */
+/* ---------------- ledger + payments (server numbers only) ---------------- */
 var totals = { kwh: 0, revenue: 0, sessions: 0 };
+var payments = [];
+var lastSummary = null;
 function renderTotals() {
   document.getElementById("tKwh").textContent = totals.kwh.toFixed(3) + " kWh";
   document.getElementById("tRev").textContent = "₹" + totals.revenue.toFixed(2);
@@ -298,26 +468,48 @@ function renderWallets(wallets) {
   Object.keys(wallets).forEach(function (tag) {
     parts.push("<span>" + esc(tag) + " <b>₹" + Number(wallets[tag]).toFixed(2) + "</b></span>");
   });
-  el.innerHTML = parts.join("");
+  el.innerHTML = parts.join("<br/>");
+}
+var paymentsBox = document.getElementById("payments");
+var paymentsNone = document.createElement("div");
+paymentsNone.className = "none";
+paymentsNone.textContent = "No sessions billed yet — plug in a bay or play traffic.";
+paymentsBox.appendChild(paymentsNone);
+function bandMixText(bands) {
+  if (!bands || !bands.length) return "";
+  return bands.map(function (b) {
+    return b.label + " " + Number(b.kwh).toFixed(2) + " kWh @ ₹" + b.rate;
+  }).join(" · ");
+}
+function addPayment(msg) {
+  payments.unshift({
+    tag: msg.idTag, cpId: msg.cpId, kwh: msg.kwh, cost: msg.cost,
+    bands: msg.bands || [], at: simClockText()
+  });
+  if (paymentsNone) { paymentsBox.removeChild(paymentsNone); paymentsNone = null; }
+  var div = document.createElement("div");
+  div.className = "pay";
+  div.innerHTML = "<b>₹" + Number(msg.cost).toFixed(2) + "</b> · " + esc(msg.idTag || "") +
+    " · " + esc(msg.cpId || "") + " · " + Number(msg.kwh).toFixed(3) + " kWh · " +
+    esc(simClockText()) +
+    (bandMixText(msg.bands) ? '<span class="mix">' + esc(bandMixText(msg.bands)) + "</span>" : "");
+  paymentsBox.insertBefore(div, paymentsBox.firstChild);
+  while (paymentsBox.children.length > 8) paymentsBox.removeChild(paymentsBox.lastChild);
 }
 
-/* ---------------- live power strip ----------------
-   Charging power is real: summed from the power values in the MeterValues
-   the CSMS relays on /observe. The building base load (25 kW) and the
-   transformer limit (90 kW) are demo assumptions, labelled as such on the
-   page. Solar is a labelled model (a 30 kWp curve over the time of day),
-   not metered data. */
+/* ---------------- live power (charging is real; base/limit are labelled
+   demo assumptions; solar is a labelled model over the sim clock) ------- */
 var BUILDING_BASE_KW = 25;
 var TRANSFORMER_LIMIT_KW = 90;
 var SOLAR_PEAK_KWP = 30;
-var powerByCp = {};   // cpId -> latest power in W, from server meter events
+var powerByCp = {};
 function chargingKw() {
   var s = 0;
   Object.keys(powerByCp).forEach(function (k) { s += powerByCp[k] || 0; });
   return s / 1000;
 }
 function solarKwModelled() {
-  var d = new Date();
+  var d = simDate();
   var h = d.getHours() + d.getMinutes() / 60;
   if (h <= 6.5 || h >= 18.5) return 0;
   var x = Math.sin(Math.PI * (h - 6.5) / 12);
@@ -333,12 +525,17 @@ function renderPower() {
   var fill = document.getElementById("pTfFill");
   fill.style.width = Math.min(100, pct).toFixed(1) + "%";
   fill.className = "tffill" + (pct >= 95 ? " red" : pct >= 75 ? " amber" : "");
-  document.getElementById("pSolar").textContent = solarKwModelled().toFixed(1) + " kW";
+  var sol = solarKwModelled();
+  document.getElementById("pSolar").textContent = sol.toFixed(1) + " kW";
+  document.getElementById("sceneSolar").textContent = sol.toFixed(1) + " kW";
+  document.getElementById("dlmKw").textContent = tot.toFixed(1);
+  var dfill = document.getElementById("dlmFill");
+  dfill.style.width = Math.min(100, pct).toFixed(1) + "%";
+  dfill.className = "dlmfill" + (pct >= 95 ? " red" : pct >= 75 ? " amber" : "");
+  document.getElementById("xfPct").textContent = pct.toFixed(0) + "%";
 }
-setInterval(renderPower, 2000);
-renderPower();
 
-/* ---------------- one bay's DOM ---------------- */
+/* ---------------- one bay's card ---------------- */
 function buildBay(bay) {
   var wrap = document.getElementById("bays");
   var div = document.createElement("div");
@@ -347,16 +544,14 @@ function buildBay(bay) {
   div.innerHTML =
     '<div class="top"><span class="name">' + esc(bay.id) + "</span>" +
     '<span class="chip Offline" data-r="chip">Offline</span></div>' +
-    '<div class="resident"><b>' + esc(bay.resident) + '</b> · RFID <span class="tag">' +
-    esc(bay.tag) + "</span></div>" +
-    '<div class="carzone"><span class="car" data-r="car">🚙</span>' +
-    '<span class="cable" data-r="cable">🔌</span>' +
+    '<div class="resident"><b>Flat ' + esc(bay.flat) + " · " + esc(bay.resident) +
+    '</b> · RFID <span class="tag">' + esc(bay.tag) + "</span></div>" +
     '<div class="batt"><div class="battbar"><div class="battfill" data-r="battfill"></div></div>' +
-    '<div class="battlbl">car battery <span data-r="soc">—</span></div></div></div>' +
+    '<div class="battlbl" data-r="battlbl">car battery —</div></div>' +
     '<div class="readouts">' +
     '<span>power <b data-r="kw">0.00 kW</b></span>' +
     '<span>session <b data-r="skwh">0.000 kWh</b></span>' +
-    '<span class="cost">running cost <b data-r="cost">₹0.00</b></span>' +
+    '<span class="cost">est. cost <b data-r="cost">₹0.00</b></span>' +
     '<span>transaction <b data-r="tx">—</b></span>' +
     "</div>" +
     '<div class="srv" data-r="srv">server view: —</div>' +
@@ -370,6 +565,108 @@ function buildBay(bay) {
   return refs;
 }
 
+/* ---------------- one bay's place on the animated map ---------------- */
+function slotCentrePct(idx) { return 10 + 16 * idx; }  // % of scene width
+function buildScene(cp, bay, idx) {
+  var slots = document.getElementById("slots");
+  var slot = document.createElement("div");
+  slot.className = "slot";
+  var ped = document.createElement("div");
+  ped.className = "ped";
+  ped.textContent = "⚡";
+  var spacer = document.createElement("div");
+  spacer.className = "spacer";
+  var bar = document.createElement("div");
+  bar.className = "slotbar";
+  var barFill = document.createElement("div");
+  barFill.className = "slotfill";
+  bar.appendChild(barFill);
+  var flat = document.createElement("div");
+  flat.className = "slotflat";
+  flat.textContent = bay.id + " · " + bay.flat;
+  var status = document.createElement("div");
+  status.className = "slotstatus Offline";
+  status.textContent = "Offline";
+  slot.appendChild(ped);
+  slot.appendChild(spacer);
+  slot.appendChild(bar);
+  slot.appendChild(flat);
+  slot.appendChild(status);
+  slots.appendChild(slot);
+
+  var cars = document.getElementById("cars");
+  var cable = document.createElement("div");
+  cable.className = "cable2";
+  cable.style.left = slotCentrePct(idx) + "%";
+  cars.appendChild(cable);
+  var car = document.createElement("div");
+  car.className = "car2";
+  car.style.left = "-16%";
+  car.style.top = "82%";
+  car.style.opacity = "0";
+  var body = document.createElement("div");
+  body.className = "carbody";
+  body.style.background = "linear-gradient(" + bay.color + ", #1e293b)";
+  car.appendChild(body);
+  cars.appendChild(car);
+
+  cp.scene = { ped: ped, barFill: barFill, statusEl: status, carEl: car, cableEl: cable };
+  cp.mapLeft = slotCentrePct(idx) + "%";
+  cp.mapStage = "away";
+  cp.mapTimer = null;
+}
+
+/* Car choreography: gate (off-scene left, on the road) -> along the road
+   to in front of its bay -> up into the slot. Reverse on departure. */
+function syncMap(cp) {
+  var el = cp.scene.carEl;
+  if (cp.carPresent) {
+    if (cp.mapStage === "away") {
+      cp.mapStage = "road";
+      el.style.opacity = "1";
+      el.style.left = cp.mapLeft;
+      el.style.top = "82%";
+      clearTimeout(cp.mapTimer);
+      cp.mapTimer = setTimeout(function () {
+        if (cp.carPresent) { el.style.top = "45.5%"; cp.mapStage = "parked"; }
+      }, 1050);
+    } else if (cp.mapStage === "leaving") {
+      clearTimeout(cp.mapTimer);
+      el.style.top = "45.5%";
+      cp.mapStage = "parked";
+    }
+  } else {
+    if (cp.mapStage === "parked" || cp.mapStage === "road") {
+      cp.mapStage = "leaving";
+      el.style.top = "82%";
+      clearTimeout(cp.mapTimer);
+      cp.mapTimer = setTimeout(function () {
+        if (!cp.carPresent) {
+          el.style.left = "-16%";
+          el.style.opacity = "0";
+          cp.mapStage = "away";
+        }
+      }, 1050);
+    }
+  }
+}
+
+/* ---------------- one bay's row in the rail ---------------- */
+function buildRow(cp, bay) {
+  var wrap = document.getElementById("bayrows");
+  var row = document.createElement("div");
+  row.className = "brow";
+  var left = document.createElement("span");
+  left.textContent = bay.id + " · " + bay.flat + " " + bay.resident;
+  var right = document.createElement("span");
+  right.className = "st Offline";
+  right.textContent = "Offline";
+  row.appendChild(left);
+  row.appendChild(right);
+  wrap.appendChild(row);
+  cp.rowEl = right;
+}
+
 /* =====================================================================
    A genuine OCPP 1.6J charge-point client (in the browser).
    ===================================================================== */
@@ -379,7 +676,7 @@ function ChargePoint(bay, idx) {
   this.ui = buildBay(bay);
   this.ws = null;
   this.seq = 0;
-  this.pending = {};            // msgId -> {resolve, reject}
+  this.pending = {};
   this.booted = false;
   this.heartbeatTimer = null;
   this.reconnectTimer = null;
@@ -388,7 +685,7 @@ function ChargePoint(bay, idx) {
   this.status = "Offline";
   this.operative = true;
   this.carPresent = false;
-  this.register = 100000 + idx * 13777 + Math.floor(rand(0, 5000)); // lifetime Wh
+  this.register = 100000 + idx * 13777 + Math.floor(rand(0, 5000));
   this.txId = null;
   this.sessionStartRegister = 0;
   this.soc = 0;
@@ -402,6 +699,9 @@ function ChargePoint(bay, idx) {
   this.finishTimer = null;
   this.localListVersion = 0;
   this.localList = [];
+  // simulator session state
+  this.sessionTargetKwh = null;   // set by traffic arrivals; null = manual
+  this.sessionCostEst = 0;        // page-side estimate at the running band
   var self = this;
   this.ui.start.addEventListener("click", function () { self.plugIn(); });
   this.ui.stop.addEventListener("click", function () { self.endSession("Local"); });
@@ -422,6 +722,7 @@ ChargePoint.prototype.connect = function () {
     self.booted = false;
     self.clearSessionTimers();
     self.txId = null; self.carPresent = false;
+    self.sessionTargetKwh = null;
     self.setStatus("Offline");
     self.render();
     if (!self.intentionalClose) {
@@ -438,8 +739,6 @@ ChargePoint.prototype.nextId = function () {
   this.seq += 1;
   return "js-" + this.id + "-" + this.seq + "-" + Math.floor(Math.random() * 1e6);
 };
-
-/* Send a CALL, return a Promise for the CALLRESULT payload. */
 ChargePoint.prototype.call = function (action, payload) {
   var self = this;
   var id = this.nextId();
@@ -510,12 +809,10 @@ ChargePoint.prototype.handleServerCall = function (action, payload) {
       setTimeout(function () {
         self2.intentionalClose = false;
         if (self2.ws) { try { self2.ws.close(); } catch (e) {} }
-        // onclose schedules the reconnect + fresh BootNotification
       }, 350);
       return { status: "Accepted" };
     }
     case "UnlockConnector": {
-      // Works while the cable is still latched after a session (Finishing).
       if (this.status === "Finishing") return { status: "Unlocked" };
       return { status: "UnlockFailed" };
     }
@@ -671,7 +968,7 @@ ChargePoint.prototype.boot = function () {
     chargePointVendor: "Simplecharge",
     chargePointModel: "SocietyWallbox 7.4",
     chargePointSerialNumber: "SN-" + this.id,
-    firmwareVersion: "1.0.0"
+    firmwareVersion: "1.1.0"
   }).then(function (res) {
     self.booted = true;
     var interval = (res && res.interval) || 30;
@@ -691,16 +988,19 @@ ChargePoint.prototype.setStatus = function (status) {
 ChargePoint.prototype.statusNotification = function (status) {
   this.setStatus(status);
   return this.call("StatusNotification", {
-    connectorId: 1, errorCode: "NoError", status: status, timestamp: isoNow()
+    connectorId: 1, errorCode: "NoError", status: status, timestamp: isoSim()
   }).catch(function () {});
 };
 
-/* "Plug in & start": the resident's car arrives, their RFID tag is
-   authorized against the server wallet, then charging begins. */
-ChargePoint.prototype.plugIn = function () {
-  if (!this.booted || this.carPresent || this.txId !== null) return;
-  if (!this.operative || this.status !== "Available") return;
+/* A car arrives at this bay: it animates in on the map, the resident's
+   RFID tag is authorized against the server wallet, then charging
+   begins. targetKwh is set by the traffic engine (a simulated visit of
+   that many kWh); manual plug-ins pass nothing and run to ~full. */
+ChargePoint.prototype.plugIn = function (targetKwh) {
+  if (!this.booted || this.carPresent || this.txId !== null) return false;
+  if (!this.operative || this.status !== "Available") return false;
   var self = this;
+  this.sessionTargetKwh = (typeof targetKwh === "number") ? targetKwh : null;
   this.carPresent = true;
   this.soc = rand(18, 45);
   this.render();
@@ -709,9 +1009,9 @@ ChargePoint.prototype.plugIn = function () {
     self.call("Authorize", { idTag: self.tag }).then(function (res) {
       var st = res && res.idTagInfo && res.idTagInfo.status;
       if (st !== "Accepted") {
-        // Server rejected the tag: the driver gives up and leaves.
         setTimeout(function () {
           self.carPresent = false;
+          self.sessionTargetKwh = null;
           self.statusNotification("Available");
           self.render();
         }, 1400);
@@ -720,10 +1020,12 @@ ChargePoint.prototype.plugIn = function () {
       self.beginCharge(self.tag);
     }).catch(function () {
       self.carPresent = false;
+      self.sessionTargetKwh = null;
       self.statusNotification("Available");
       self.render();
     });
   }, 600);
+  return true;
 };
 
 /* StartTransaction + meter loop. Used by the local plug-in flow (after
@@ -732,13 +1034,14 @@ ChargePoint.prototype.beginCharge = function (tag) {
   var self = this;
   this.carPresent = true;
   if (this.soc <= 0) this.soc = rand(18, 45);
-  this.targetSoc = rand(85, 97);
+  this.targetSoc = this.sessionTargetKwh ? 99 : rand(85, 97);
+  this.sessionCostEst = 0;
   this.render();
   var doStart = function () {
     self.sessionStartRegister = self.register;
     self.call("StartTransaction", {
       connectorId: 1, idTag: tag,
-      meterStart: Math.round(self.register), timestamp: isoNow()
+      meterStart: Math.round(self.register), timestamp: isoSim()
     }).then(function (res) {
       self.txId = res.transactionId;
       self.statusNotification("Charging");
@@ -746,6 +1049,7 @@ ChargePoint.prototype.beginCharge = function (tag) {
       self.render();
     }).catch(function () {
       self.carPresent = false;
+      self.sessionTargetKwh = null;
       self.statusNotification("Available");
       self.render();
     });
@@ -760,20 +1064,35 @@ ChargePoint.prototype.beginCharge = function (tag) {
 
 ChargePoint.prototype.effectivePower = function () {
   var p = BASE_POWER_W + rand(-70, 70);
+  // gentle taper as the battery fills
+  if (this.soc > 85) p *= 0.55; else if (this.soc > 70) p *= 0.8;
   if (this.powerCapW !== null) p = Math.min(p, this.powerCapW);
   return p;
+};
+
+ChargePoint.prototype.sessionKwh = function () {
+  return this.txId !== null ? (this.register - this.sessionStartRegister) / 1000 : 0;
 };
 
 ChargePoint.prototype.meterTick = function () {
   if (this.txId === null) return;
   var p = this.effectivePower();
   this.lastPowerW = p;
-  var wh = p * (METER_MS / 1000) / 3600; // W * s -> Wh  (7.4 kW for 2 s ≈ 4.11 Wh)
+  // Energy for one tick of SIMULATED time: at speed s, METER_MS of real
+  // time carries s * METER_MS of sim time, so sessions (and their meter
+  // timestamps) compress together — the server bills the same either way.
+  // Wh = W * sim-seconds / 3600, and sim-seconds per tick = METER_MS/1000 * s.
+  var wh = p * METER_MS * SIM.speed / 3600000;
   this.register += wh;
   this.soc = Math.min(100, this.soc + (wh / 1000) / BATTERY_KWH * 100);
+  this.sessionCostEst += (wh / 1000) * BANDS[simBand()].rate;
   this.sendMeterValues(p);
   this.render();
-  if (this.soc >= this.targetSoc) this.endSession("Local"); // battery full enough
+  if (this.sessionTargetKwh !== null && this.sessionKwh() >= this.sessionTargetKwh) {
+    this.endSession("Local"); // traffic visit reached its energy target
+  } else if (this.sessionTargetKwh === null && this.soc >= this.targetSoc) {
+    this.endSession("Local"); // battery full enough
+  }
 };
 
 ChargePoint.prototype.sendMeterValues = function (powerW) {
@@ -782,7 +1101,7 @@ ChargePoint.prototype.sendMeterValues = function (powerW) {
     connectorId: 1,
     transactionId: this.txId,
     meterValue: [{
-      timestamp: isoNow(),
+      timestamp: isoSim(),
       sampledValue: [
         { value: this.register.toFixed(1), measurand: "Energy.Active.Import.Register", unit: "Wh" },
         { value: String(Math.round(p)), measurand: "Power.Active.Import", unit: "W" },
@@ -799,8 +1118,9 @@ ChargePoint.prototype.clearSessionTimers = function () {
   clearTimeout(this.finishTimer); this.finishTimer = null;
 };
 
-/* "Stop & unplug" (or a remote stop, or a full battery): StopTransaction,
-   the server bills the wallet, then the bay frees up. */
+/* Stop & unplug (button, remote stop, full battery, or a traffic visit
+   reaching its target): StopTransaction, the server bills the wallet
+   with time-of-use pricing, then the car drives off. */
 ChargePoint.prototype.endSession = function (reason) {
   if (this.txId === null) return;
   var self = this;
@@ -808,9 +1128,10 @@ ChargePoint.prototype.endSession = function (reason) {
   this.clearSessionTimers();
   this.txId = null;
   this.lastPowerW = 0;
+  this.sessionTargetKwh = null;
   this.call("StopTransaction", {
     transactionId: tx, meterStop: Math.round(this.register),
-    timestamp: isoNow(), reason: reason || "Local"
+    timestamp: isoSim(), reason: reason || "Local"
   }).catch(function () {}).then(function () {
     self.statusNotification("Finishing");
     self.finishTimer = setTimeout(function () {
@@ -831,32 +1152,116 @@ ChargePoint.prototype.endSession = function (reason) {
   });
 };
 
-/* ------------- rendering ------------- */
+/* ------------- rendering (card + map + rail row) ------------- */
 ChargePoint.prototype.render = function () {
   var u = this.ui;
   var status = this.booted ? this.status : "Offline";
   u.chip.textContent = status;
   u.chip.className = "chip " + status;
-  u.car.className = "car" + (this.carPresent ? " in" : "");
-  u.cable.className = "cable" + (this.txId !== null || this.status === "Preparing" ? " on" : "");
   var charging = this.txId !== null;
-  var sessionKwh = charging ? (this.register - this.sessionStartRegister) / 1000 : 0;
+  var skwh = this.sessionKwh();
   u.kw.textContent = (charging ? this.lastPowerW / 1000 : 0).toFixed(2) + " kW";
-  u.skwh.textContent = sessionKwh.toFixed(3) + " kWh";
-  // Running estimate at the server tariff; the billed figure comes from
-  // the server's own session summary in the ledger.
-  u.cost.textContent = "₹" + (sessionKwh * TARIFF_INR).toFixed(2);
+  u.skwh.textContent = skwh.toFixed(3) + " kWh";
+  u.cost.textContent = "₹" + this.sessionCostEst.toFixed(2);
   u.tx.textContent = this.txId !== null ? "#" + this.txId : "—";
-  u.soc.textContent = this.carPresent ? this.soc.toFixed(0) + "%" : "—";
-  u.battfill.style.width = this.carPresent ? this.soc.toFixed(1) + "%" : "0%";
+  // Progress bar: traffic visits fill toward their energy target,
+  // manual sessions toward the battery target.
+  var pct, lbl;
+  if (!this.carPresent) { pct = 0; lbl = "car battery —"; }
+  else if (this.sessionTargetKwh !== null && this.sessionTargetKwh > 0) {
+    pct = Math.min(100, skwh / this.sessionTargetKwh * 100);
+    lbl = "visit progress " + pct.toFixed(0) + "% · target " + this.sessionTargetKwh.toFixed(1) + " kWh";
+  } else {
+    pct = this.soc;
+    lbl = "car battery " + this.soc.toFixed(0) + "%";
+  }
+  u.battfill.style.width = pct.toFixed(1) + "%";
+  u.battlbl.textContent = lbl;
   u.start.disabled = !(this.booted && this.operative && !this.carPresent &&
                        this.txId === null && this.status === "Available");
   u.stop.disabled = !charging;
+  // map
+  if (this.scene) {
+    var cableOn = charging || this.status === "Preparing";
+    this.scene.ped.className = "ped" + (cableOn ? " on" : "");
+    this.scene.cableEl.style.opacity = cableOn ? "1" : "0";
+    this.scene.carEl.className = "car2" + (charging ? " charging" : "");
+    this.scene.barFill.style.width = pct.toFixed(1) + "%";
+    this.scene.statusEl.className = "slotstatus " + status;
+    this.scene.statusEl.textContent = status +
+      (charging ? " · " + (this.lastPowerW / 1000).toFixed(1) + " kW" : "");
+    syncMap(this);
+  }
+  // rail row
+  if (this.rowEl) {
+    this.rowEl.className = "st " + status;
+    this.rowEl.textContent = status +
+      (charging ? " · " + (this.lastPowerW / 1000).toFixed(1) + " kW" : "");
+  }
 };
 
-/* ---------------- boot the three bay clients ---------------- */
+/* ---------------- traffic engine ----------------
+   When playing, residents arrive at free bays and run REAL sessions
+   through the server — the only thing the engine decides is who shows
+   up, at which bay, and how much energy they take. Arrivals are spaced
+   in simulation minutes; the energy target ends the visit. */
+function trafficTick() {
+  if (!SIM.playing) return;
+  if (SIM.nextArrivalMs === 0) {
+    SIM.nextArrivalMs = SIM.nowMs + rand(1, 3) * 60000;
+    return;
+  }
+  if (SIM.nowMs < SIM.nextArrivalMs) return;
+  var free = clients.filter(function (c) {
+    return c.booted && c.operative && !c.carPresent && c.txId === null &&
+           c.status === "Available";
+  });
+  if (!free.length) {
+    SIM.nextArrivalMs = SIM.nowMs + 5 * 60000;
+    return;
+  }
+  var cp = free[Math.floor(Math.random() * free.length)];
+  var target = rand(2.5, 7);
+  if (cp.plugIn(target)) {
+    var bay = bayById(cp.id);
+    logLine("🚗 traffic · " + esc(bay.resident) + " (" + esc(bay.flat) + ") arrived at " +
+            esc(cp.id) + " · wants " + target.toFixed(1) + " kWh", "dim");
+  }
+  SIM.nextArrivalMs = SIM.nowMs + rand(8, 20) * 60000;
+}
+
+function setSpeed(n) {
+  SIM.speed = n;
+  [1, 3, 10, 30].forEach(function (s) {
+    document.getElementById("spd" + s).className = "spdbtn" + (s === n ? " on" : "");
+  });
+}
+function setTraffic(on) {
+  SIM.playing = on;
+  document.getElementById("btnTraffic").textContent = on ? "⏸ Pause traffic" : "▶ Play traffic";
+  if (on && SIM.nextArrivalMs < SIM.nowMs) SIM.nextArrivalMs = SIM.nowMs + 60000;
+  logLine(on ? "▶ traffic playing — residents will come and go" :
+               "⏸ traffic paused — bays are yours to drive manually", "dim");
+}
+function resetDay() {
+  SIM.nowMs = Date.now();
+  SIM.nextArrivalMs = 0;
+  totals = { kwh: 0, revenue: 0, sessions: 0 };
+  payments = [];
+  while (paymentsBox.firstChild) paymentsBox.removeChild(paymentsBox.lastChild);
+  paymentsNone = document.createElement("div");
+  paymentsNone.className = "none";
+  paymentsNone.textContent = "No sessions billed yet — plug in a bay or play traffic.";
+  paymentsBox.appendChild(paymentsNone);
+  renderTotals();
+  logLine("— day reset · clock back to real time, tallies cleared (server wallets persist) —", "dim");
+}
+
+/* ---------------- boot the six bay clients ---------------- */
 var clients = BAYS.map(function (bay, i) {
   var cp = new ChargePoint(bay, i);
+  buildScene(cp, bay, i);
+  buildRow(cp, bay);
   cp.connect();
   return cp;
 });
@@ -864,6 +1269,19 @@ function clientById(id) {
   for (var i = 0; i < clients.length; i++) if (clients[i].id === id) return clients[i];
   return null;
 }
+function bayById(id) {
+  for (var i = 0; i < BAYS.length; i++) if (BAYS[i].id === id) return BAYS[i];
+  return BAYS[0];
+}
+
+/* ---------------- controls ---------------- */
+document.getElementById("btnTraffic").addEventListener("click", function () {
+  setTraffic(!SIM.playing);
+});
+[1, 3, 10, 30].forEach(function (s) {
+  document.getElementById("spd" + s).addEventListener("click", function () { setSpeed(s); });
+});
+document.getElementById("btnReset").addEventListener("click", function () { resetDay(); });
 
 /* ---------------- observer socket (log + ledger + server view) ---------------- */
 var obs = null;
@@ -894,13 +1312,16 @@ function connectObserver() {
     }
     if (msg.event === "summary") {
       if (msg.cpId) { powerByCp[msg.cpId] = 0; renderPower(); }
+      lastSummary = msg;
       totals.kwh += msg.kwh || 0;
       totals.revenue += msg.cost || 0;
       totals.sessions += 1;
       renderTotals();
+      addPayment(msg);
       logLine("◆ " + esc(msg.cpId) + " session complete · " + esc(msg.idTag || "") +
               " · " + (msg.kwh || 0).toFixed(3) + " kWh · ₹" + (msg.cost || 0).toFixed(2) +
               " billed by server" +
+              (bandMixText(msg.bands) ? " · " + esc(bandMixText(msg.bands)) : "") +
               (msg.walletBalance === null || msg.walletBalance === undefined
                 ? "" : " · wallet now ₹" + Number(msg.walletBalance).toFixed(2)), "sum");
       return;
@@ -932,6 +1353,9 @@ function connectObserver() {
 }
 connectObserver();
 renderTotals();
+renderPower();
+setInterval(simTick, 250);
+simTick();
 </script>
 </body>
 </html>

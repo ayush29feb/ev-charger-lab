@@ -8,24 +8,35 @@ here speaks **genuine OCPP 1.6J over a real WebSocket**:
   `ws://<host>:9001/observe`, and it serves this folder's static files on
   `http://<host>:8080/`. Handles BootNotification, Authorize (wallet check),
   StartTransaction, MeterValues, StatusNotification, Heartbeat, StopTransaction
-  (bills at ₹18/kWh against in-memory wallets), and forwards operator commands
+  (bills against in-memory wallets with **time-of-use pricing**: each
+  MeterValues interval is priced by the tariff band of its own timestamp —
+  Night 23:00–06:00 ₹10/kWh, Solar hours 09:00–16:00 ₹12/kWh, Evening peak
+  17:00–22:00 ₹18/kWh, all other hours ₹14/kWh — and the session summary
+  carries a per-band breakdown), and forwards operator commands
   from observers as genuine server-initiated CALLs (RemoteStartTransaction,
   RemoteStopTransaction, Reset, UnlockConnector, ChangeAvailability,
   TriggerMessage). Every raw frame is broadcast to observers verbatim.
-- **`visualizer.html`** — the chargers in the lot are **real OCPP clients
-  written in JavaScript**: each opens its own WebSocket to the CSMS and sends
-  actual `[2, id, "BootNotification", {...}]` frames, waits for `[3, ...]`
-  replies, runs sessions, and answers server-initiated calls. The terminal
-  shows the exact wire strings relayed by the CSMS observer feed — nothing is
-  re-enacted. Operator buttons send control JSON on `/observe`, which the
-  CSMS forwards as real OCPP CALLs.
+- **`visualizer.html`** — a housing-society simulator on top of the real
+  server: an animated top-down map (building + rooftop solar, load-manager
+  and transformer boxes, six bays) whose cars drive in, plug in, charge and
+  leave. The six bays are **real OCPP clients written in JavaScript**: each
+  opens its own WebSocket to the CSMS and sends actual
+  `[2, id, "BootNotification", {...}]` frames, waits for `[3, ...]`
+  replies, runs sessions, and answers server-initiated calls. A traffic
+  engine (Play + 1×/3×/10×/30×) runs a simulation clock that drives the
+  tariff band, the modelled solar curve and the meter timestamps, and
+  generates resident arrivals that run genuine sessions through the
+  server. The log shows the exact wire strings relayed by the CSMS
+  observer feed — nothing is re-enacted.
 - **`test_observer.py` / `test_raw_cp.py`** — headless checks: a raw Python
   charge point runs a full session while an observer client asserts the frames
-  arrive on the feed. Verified locally 2026-11-03 (session billed 0.062 kWh,
-  ₹1.12, wallet debited; all core frames observed).
+  arrive on the feed. `test_raw_cp.py` expects the ToU "Standard" band
+  (₹14/kWh) for its 07:40 UTC timestamps and asserts the summary's per-band
+  breakdown; URLs can be overridden with `CP_URL` / `OBSERVE_URL`.
 
-Demo tags: `DEMO1234` (wallet ₹500), `AYUSH001`, `PRIYA002`, `RAHUL003` are
-accepted; anything else (try `GUEST009`) is rejected as Invalid.
+Demo tags: `DEMO1234` (wallet ₹500), `AYUSH001` (₹250), `PRIYA002` (₹300),
+`RAHUL003` (₹150), `MEERA004` (₹400), `ARJUN005` (₹350) are accepted;
+anything else (try `GUEST009`) is rejected as Invalid.
 
 ## Run locally
 

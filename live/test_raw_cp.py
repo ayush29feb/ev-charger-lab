@@ -10,20 +10,27 @@ browser JS clients in visualizer.html do (same message shapes), and checks:
   * StartTransaction + MeterValues
   * observer control RemoteStopTransaction -> forwarded as a real [2] CALL,
     this CP replies [3] {"status": "Accepted"}, then sends StopTransaction
-  * {"event": "summary"} bills AYUSH001's wallet at ₹18/kWh
+  * {"event": "summary"} bills AYUSH001's wallet with time-of-use pricing:
+    all timestamps below are 07:40-07:41 UTC, which is the "Standard" band
+    (₹14/kWh), so 1.000 kWh costs ₹14.00 and the summary must carry a
+    per-band breakdown totalling the same
 
 Usage: test_raw_cp.py   (exit 0 = all pass)
+URLs default to ws://localhost:9001/... and can be overridden with the
+CP_URL / OBSERVE_URL environment variables (single-port local runs and
+the live Render deployment).
 """
 
 import asyncio
 import json
+import os
 import sys
 import time
 
 from websockets.asyncio.client import connect
 
-CP_URL = "ws://localhost:9001/SIM_777"
-OBSERVE_URL = "ws://localhost:9001/observe"
+CP_URL = os.environ.get("CP_URL", "ws://localhost:9001/SIM_777")
+OBSERVE_URL = os.environ.get("OBSERVE_URL", "ws://localhost:9001/observe")
 
 results = []
 
@@ -113,7 +120,8 @@ async def main() -> int:
               is_remote_stop, json.dumps(frame)[:200])
         await cp.send(json.dumps([3, frame[1], {"status": "Accepted"}]))
 
-        # CP ends the session: 51000 Wh stop => 1.000 kWh => ₹18.00
+        # CP ends the session: 51000 Wh stop => 1.000 kWh, all of it inside
+        # the 07:xx UTC "Standard" band (₹14/kWh) => ₹14.00
         r = await call("StopTransaction", {
             "transactionId": tx, "meterStop": 51000,
             "timestamp": "2026-11-03T07:41:00Z", "reason": "Remote"})
@@ -131,9 +139,16 @@ async def main() -> int:
           json.dumps(states)[:200])
     summaries = [e for e in observed["events"] if e.get("event") == "summary"]
     s = summaries[0] if summaries else {}
-    check("summary bills 1.000 kWh / ₹18.00 to AYUSH001",
-          s.get("kwh") == 1.0 and s.get("cost") == 18.0
-          and s.get("walletBalance") == 232.0,
+    bands = s.get("bands") or []
+    bands_ok = (
+        len(bands) == 1 and bands[0].get("band") == "standard"
+        and bands[0].get("rate") == 14.0
+        and abs(bands[0].get("kwh", 0) - 1.0) < 0.001
+        and abs(bands[0].get("cost", 0) - 14.0) < 0.01
+    )
+    check("summary bills 1.000 kWh / ₹14.00 (ToU Standard band) to AYUSH001",
+          s.get("kwh") == 1.0 and s.get("cost") == 14.0
+          and s.get("walletBalance") == 236.0 and bands_ok,
           json.dumps(s))
     ctrl = [e for e in observed["events"]
             if e.get("event") == "control_result"]

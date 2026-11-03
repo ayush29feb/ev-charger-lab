@@ -34,8 +34,13 @@ Every raw frame in both directions is broadcast to all observers as:
 
 plus {"event": "state", ...} snapshots on connector status changes and
 {"event": "summary", ...} + {"event": "wallets", ...} when a session is
-billed. Billing: kWh = (meterStop - meterStart) / 1000 at ₹18/kWh, debited
-from an in-memory wallet keyed by idTag.
+billed. Billing is time-of-use: each MeterValues interval's energy is
+priced by the tariff band of that interval's own timestamp (Night
+23:00-06:00 ₹10/kWh, Solar hours 09:00-16:00 ₹12/kWh, Evening peak
+17:00-22:00 ₹18/kWh, all other hours ₹14/kWh), the final interval up to
+meterStop is priced by the StopTransaction timestamp, and the summary
+carries the total plus a per-band breakdown. Debited from an in-memory
+wallet keyed by idTag.
 
 Dependencies: Python 3.12 stdlib + `websockets` only (same venv as the lab).
 """
@@ -57,7 +62,6 @@ from websockets.exceptions import ConnectionClosed
 LIVE_DIR = Path(__file__).resolve().parent
 WS_PORT = 9001
 HTTP_PORT = 8080
-RATE_INR_PER_KWH = 18.0
 HEARTBEAT_INTERVAL_S = 30
 
 # In-memory wallets (₹). Any idTag not listed here is rejected as Invalid.
@@ -66,7 +70,53 @@ WALLETS = {
     "AYUSH001": 250.00,
     "PRIYA002": 300.00,
     "RAHUL003": 150.00,
+    "MEERA004": 400.00,
+    "ARJUN005": 350.00,
 }
+
+
+# --------------------------------------------------------------------------
+# Time-of-use tariff
+# --------------------------------------------------------------------------
+# Resident price (₹/kWh) by the wall-clock hour *as written* in the energy
+# interval's timestamp: a charger in India sending +05:30 timestamps is
+# priced on Indian local time; the browser bays send their simulation
+# clock with a Z suffix, so accelerated time prices in the right band.
+def tariff_band(hour: int):
+    """(key, label, ₹/kWh) for a wall-clock hour 0-23."""
+    if hour >= 23 or hour < 6:
+        return ("night", "Night", 10.0)
+    if 9 <= hour < 16:
+        return ("solar", "Solar hours", 12.0)
+    if 17 <= hour < 22:
+        return ("peak", "Evening peak", 18.0)
+    return ("standard", "Standard", 14.0)
+
+
+def parse_ts(value):
+    """Parse an OCPP ISO-8601 timestamp; None if missing/unparseable."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def price_interval(session: dict, delta_wh: float, ts) -> None:
+    """Accumulate one energy interval into the session's per-band totals,
+    priced by the band of the interval's timestamp (falling back to the
+    previous interval's timestamp, then to server receipt time)."""
+    if delta_wh <= 0:
+        return
+    when = ts or session.get("last_ts") or datetime.now(timezone.utc)
+    key, label, rate = tariff_band(when.hour)
+    kwh = delta_wh / 1000.0
+    band = session["bands"].setdefault(key, {
+        "band": key, "label": label, "rate": rate, "kwh": 0.0, "cost": 0.0,
+    })
+    band["kwh"] += kwh
+    band["cost"] += kwh * rate
 
 
 def now_stamp() -> str:
@@ -251,6 +301,11 @@ class ChargePointConnection:
             "register": payload.get("meterStart", 0),
             "power_w": 0.0,
             "started_at": datetime.now(timezone.utc),
+            # Time-of-use pricing state: energy is priced interval by
+            # interval as MeterValues arrive, keyed off the register.
+            "priced_register": payload.get("meterStart", 0),
+            "last_ts": parse_ts(payload.get("timestamp")),
+            "bands": {},
         }
         log(f"CSMS:{self.id}",
             f"START tx={transaction_id} "
@@ -267,6 +322,7 @@ class ChargePointConnection:
         session = sessions.get(transaction_id)
         register = power = soc = None
         for entry in payload.get("meterValue", []):
+            entry_register = entry_power = entry_soc = None
             for sv in entry.get("sampledValue", []):
                 measurand = sv.get("measurand", "Energy.Active.Import.Register")
                 try:
@@ -274,11 +330,29 @@ class ChargePointConnection:
                 except (TypeError, ValueError):
                     continue
                 if measurand == "Energy.Active.Import.Register":
-                    register = value
+                    entry_register = value
                 elif measurand == "Power.Active.Import":
-                    power = value
+                    entry_power = value
                 elif measurand == "SoC":
-                    soc = value
+                    entry_soc = value
+            if entry_register is not None:
+                register = entry_register
+                if session is not None:
+                    # Price this interval now, by its own timestamp, so a
+                    # session spanning a band boundary bills each slice of
+                    # energy at the rate in force while it was delivered.
+                    entry_ts = parse_ts(entry.get("timestamp"))
+                    price_interval(
+                        session,
+                        entry_register - session["priced_register"],
+                        entry_ts)
+                    session["priced_register"] = entry_register
+                    if entry_ts is not None:
+                        session["last_ts"] = entry_ts
+            if entry_power is not None:
+                power = entry_power
+            if entry_soc is not None:
+                soc = entry_soc
         if register is not None:
             if session is not None:
                 session["register"] = register
@@ -322,17 +396,43 @@ class ChargePointConnection:
             (datetime.now(timezone.utc) - session["started_at"]).total_seconds()
             if session else 0.0
         )
-        cost = round(total_kwh * RATE_INR_PER_KWH, 2)
+        # Bill the final interval (last priced register -> meterStop) at
+        # the band of the StopTransaction timestamp, then total up the
+        # per-band accumulation built from the MeterValues intervals.
+        bands = []
+        if session is not None:
+            price_interval(session,
+                           meter_stop - session["priced_register"],
+                           parse_ts(payload.get("timestamp")))
+            cost = round(sum(b["cost"] for b in session["bands"].values()), 2)
+            bands = [{
+                "band": b["band"], "label": b["label"], "rate": b["rate"],
+                "kwh": round(b["kwh"], 3), "cost": round(b["cost"], 2),
+            } for b in session["bands"].values() if b["kwh"] > 0]
+        else:
+            # Session unknown to this server instance (e.g. it restarted
+            # mid-transaction): price the whole amount at the stop band.
+            stop_ts = parse_ts(payload.get("timestamp")) \
+                or datetime.now(timezone.utc)
+            _, label, rate = tariff_band(stop_ts.hour)
+            cost = round(total_kwh * rate, 2)
+            if total_kwh > 0:
+                bands = [{"band": tariff_band(stop_ts.hour)[0],
+                          "label": label, "rate": rate,
+                          "kwh": round(total_kwh, 3), "cost": cost}]
         balance = None
         if id_tag in WALLETS:
             WALLETS[id_tag] = round(WALLETS[id_tag] - cost, 2)
             balance = WALLETS[id_tag]
+        band_text = ", ".join(
+            f"{b['label']} {b['kwh']:.3f} kWh @ ₹{b['rate']:.0f} = ₹{b['cost']:.2f}"
+            for b in bands) or "no energy"
         summary = (
             "SESSION SUMMARY "
             f"tx={transaction_id} idTag={id_tag} "
             f"meterStart={meter_start} Wh meterStop={meter_stop} Wh "
             f"total={total_kwh:.3f} kWh duration={duration_s:.1f}s "
-            f"rate=₹{RATE_INR_PER_KWH:.0f}/kWh cost=₹{cost:.2f} "
+            f"bands[{band_text}] cost=₹{cost:.2f} "
             f"wallet[{id_tag}]={balance}"
         )
         log(f"CSMS:{self.id}", summary)
@@ -340,7 +440,7 @@ class ChargePointConnection:
             "event": "summary", "cpId": self.id,
             "transactionId": transaction_id, "idTag": id_tag,
             "meterStart": meter_start, "meterStop": meter_stop,
-            "kwh": round(total_kwh, 3), "cost": cost,
+            "kwh": round(total_kwh, 3), "cost": cost, "bands": bands,
             "durationS": round(duration_s, 1), "walletBalance": balance,
         })
         await broadcast_wallets()
