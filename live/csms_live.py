@@ -486,8 +486,9 @@ def _select_subprotocol(connection, subprotocols):
 def _single_port_http(connection, request, port: int):
     """Single-port mode (PORT env set, e.g. Render / Railway / Cloud Run):
     hosts that expose only ONE public port get plain HTTP requests answered
-    here (the visualizer page, with its WS port rewritten to this port),
-    while WebSocket upgrade requests fall through to the OCPP handler."""
+    here (the visualizer page, with its WebSocket target rewritten to the
+    page's own public origin), while WebSocket upgrade requests fall through
+    to the OCPP handler."""
     if (request.headers.get("Upgrade") or "").lower() == "websocket":
         return None
     path = (request.path or "/").split("?")[0]
@@ -495,7 +496,12 @@ def _single_port_http(connection, request, port: int):
         return connection.respond(200, "ok")
     if path in ("/", "/visualizer.html"):
         html = (LIVE_DIR / "visualizer.html").read_text(encoding="utf-8")
-        html = html.replace('HOST + ":9001"', f'HOST + ":{port}"')
+        # The page must dial the WebSocket on the SAME public origin it was
+        # loaded from (location.host) — NOT on `port`, which on PaaS hosts
+        # like Render is the internal container port (e.g. 10000) and is not
+        # reachable from the internet. (Bug found live 2026-11-03: the page
+        # tried wss://<host>:10000 and the observer socket never connected.)
+        html = html.replace('HOST + ":9001"', "location.host")
         resp = connection.respond(200, html)
         resp.headers["Content-Type"] = "text/html; charset=utf-8"
         return resp
